@@ -6,7 +6,7 @@ source $(dirname "$0")/scripts/prBitbucketScripts/variables.sh
 
 source $(dirname "$0")/scripts/prBitbucketScripts/helperFns.sh
 
-source $(dirname "$0")/scripts/prBitbucketScripts/prBitbucketfindVersionTypeOrExitIfCommitMsgWrong.sh
+source $(dirname "$0")/scripts/prBitbucketScripts/prBitbucketFindVersionTypeOrExitIfCommitMsgWrong.sh
 
 source $(dirname "$0")/scripts/prBitbucketScripts/prBitbucketVersionIncrease.sh
 
