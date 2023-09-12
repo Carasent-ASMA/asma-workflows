@@ -21,9 +21,6 @@ push: &push
       #- source scripts/prBitbucketScripts/prBitbucketFindVersionTypeOrExitIfCommitMsgWrong.sh
       #- source scripts/prBitbucketScripts/prBitbucketVersionIncrease.sh
       - ./release.sh
-
-      - ./postsetup.sh
-
     services:
       - docker
 
