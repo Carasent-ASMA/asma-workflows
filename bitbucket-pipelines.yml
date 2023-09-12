@@ -20,7 +20,7 @@ push: &push
       #- source scripts/prBitbucketScripts/helperFns.sh
       #- source scripts/prBitbucketScripts/prBitbucketFindVersionTypeOrExitIfCommitMsgWrong.sh
       #- source scripts/prBitbucketScripts/prBitbucketVersionIncrease.sh
-      - apt-get update && apt-get install -y awscli && apt-get install -y jq
+      - apt-get update && apt-get install -y awscli
       - ./release.sh
     services:
       - docker
