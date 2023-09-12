@@ -10,6 +10,8 @@ source $(dirname "$0")/scripts/prBitbucketScripts/prBitbucketfindVersionTypeOrEx
 
 source $(dirname "$0")/scripts/prBitbucketScripts/prBitbucketVersionIncrease.sh
 
+deleteFromS3AsmaAppCdn "$VERSION"
+
 publishToS3Bucket "scripts"
 
 source "$(dirname "$0")/scripts/prBitbucketScripts/prBitbucketTagCommitAndPush.sh"
