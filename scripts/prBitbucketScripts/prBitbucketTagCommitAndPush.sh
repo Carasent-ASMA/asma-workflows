@@ -7,6 +7,7 @@ if ! [[ -z "$VERSION" ]]; then
     REJECTED=$(stringContainsSubstring "$resGitTagPush" "rejected")
     
     errorOnGivenNumberOrOkMsg 0 $REJECTED "$resGitTagPush"
+    else
     
     errorMsg "VERSION is empty!"
 fi
