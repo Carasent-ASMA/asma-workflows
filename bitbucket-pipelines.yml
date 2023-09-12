@@ -16,12 +16,12 @@ push: &push
     name: Push and Tag
     image: python:3.10
     script:
-      - source scripts/prBitbucketScripts/variables.sh
-      - source scripts/prBitbucketScripts/helperFns.sh
-      - source scripts/prBitbucketScripts/prBitbucketFindVersionTypeOrExitIfCommitMsgWrong.sh
-      - source scripts/prBitbucketScripts/prBitbucketVersionIncrease.sh
-      #- . pipe/prBitbucketScripts/setup.sh
-     
+      #- source scripts/prBitbucketScripts/variables.sh
+      #- source scripts/prBitbucketScripts/helperFns.sh
+      #- source scripts/prBitbucketScripts/prBitbucketFindVersionTypeOrExitIfCommitMsgWrong.sh
+      #- source scripts/prBitbucketScripts/prBitbucketVersionIncrease.sh
+      - ./release.sh
+
       - ./postsetup.sh
 
     services:
