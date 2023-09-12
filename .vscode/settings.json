@@ -1,0 +1,141 @@
+/**!!!
+ * If you intent to modify all front end apps edit this file in template-vitemf-react repo
+ * !!!
+ */
+{
+  "editor.wordSeparators": "`~!@#%^&*()-=+[{]}\\|;:'\",.<>/?",
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  // let editor format using prettier for all other files
+  "editor.formatOnSave": true,
+  "editor.wordWrap": "on",
+  // disable editor formatting, so eslint can handle it
+  "[javascript]": {
+    "editor.formatOnSave": false,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.formatOnSave": false
+  },
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1500,
+
+  //"typescript.tsdk": "./node_modules/typescript/lib",
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "html",
+    "typescriptreact"
+  ],
+  "typescript.referencesCodeLens.enabled": true,
+  "javascript.referencesCodeLens.enabled": true,
+  "editor.quickSuggestions": {
+    "strings": true
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+
+  "typescript.inlayHints.functionLikeReturnTypes.enabled": true,
+
+  "typescript.inlayHints.parameterNames.enabled": "all",
+
+  "typescript.inlayHints.parameterNames.suppressWhenArgumentMatchesName": true,
+
+  "typescript.inlayHints.parameterTypes.enabled": true,
+
+  "typescript.inlayHints.propertyDeclarationTypes.enabled": true,
+
+  "typescript.inlayHints.variableTypes.enabled": true,
+  "css.validate": false,
+  "stylelint.enable": true, // Enable sytlelint
+  "scss.validate": false, // Disable scss lint (optional if using scss)
+  "explorer.decorations.badges": true,
+  "explorer.decorations.colors": true,
+  "terminal.explorerKind": "external",
+  "todo-tree.tree.showBadges": true,
+  "todo-tree.tree.showCountsInTree": true,
+  "todo-tree.regex.enableMultiLine": true
+
+  //"cSpell.language": "en,nb",
+  /*  "cSpell.words": [
+        "åååå",
+        "actno",
+        "ADCURIS",
+        "adopus",
+        "Advoca",
+        "akar",
+        "antd",
+        "antrd",
+        "asma",
+        "byweekday",
+        "childs",
+        "clsx",
+        "decombine",
+        "deepcode",
+        "DEVEXPRESS",
+        "Documentnavn",
+        "Dokkladd",
+        "doklad",
+        "dtstart",
+        "fagsystem",
+        "Forhåndsutfyll",
+        "forhåndsvises",
+        "Fretex",
+        "Genql",
+        "HASURA",
+        "iconify",
+        "IEPR",
+        "invitasjonskode",
+        "jobbkonsulenten",
+        "Jobkonsulent",
+        "Kartleggingsskjema",
+        "Kommunikasjonsportalen",
+        "kontaktinformasjon",
+        "kundestøtten",
+        "Maloversikt",
+        "mergin",
+        "MICROAPP",
+        "Mobilnummer",
+        "nocheck",
+        "pades",
+        "pagebreak",
+        "personnr",
+        "pkey",
+        "predef",
+        "qiankun",
+        "qnrs",
+        "rrule",
+        "rruleset",
+        "Samtykkelisten",
+        "shoud",
+        "showable",
+        "Signicat",
+        "skjemaer",
+        "skjemaet",
+        "Skjemamaler",
+        "skjemapakker",
+        "Skjemastatus",
+        "Skjemasvar",
+        "soknad",
+        "soknadid",
+        "soknads",
+        "splittable",
+        "Spørsmålsmodul",
+        "subquestion",
+        "Tilbydt",
+        "tlfmobil",
+        "Uarkivert",
+        "ulagrede",
+        "Ustøttet",
+        "Vedleggstatus",
+        "whiteline",
+        "yrkesønske"
+    ] */
+}
