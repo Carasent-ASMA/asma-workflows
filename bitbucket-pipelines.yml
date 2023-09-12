@@ -16,25 +16,12 @@ push: &push
     name: Push and Tag
     image: python:3.10
     script:
-      - source pipe/prBitbucketScripts/variables.sh
-      - source pipe/prBitbucketScripts/helperFns.sh
-      - LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-      - LAST_VERSION=$(git describe --abbrev=0 --tags | sed 's/\(.*\)-\(.*\)-g\(.*\)/\1+\2.\3/' | sed 's/v\(.*\)/\1/')
-      - source pipe/prBitbucketScripts/prBitbucketFindVersionTypeOrExitIfCommitMsgWrong.sh
-      - source pipe/prBitbucketScripts/prBitbucketVersionIncrease.sh
+      - source scripts/prBitbucketScripts/variables.sh
+      - source scripts/prBitbucketScripts/helperFns.sh
+      - source scripts/prBitbucketScripts/prBitbucketFindVersionTypeOrExitIfCommitMsgWrong.sh
+      - source scripts/prBitbucketScripts/prBitbucketVersionIncrease.sh
       #- . pipe/prBitbucketScripts/setup.sh
-      - pipe: atlassian/bitbucket-pipe-release:5.3.1
-        variables:
-          VERSION: $VERSION
-          LAST_COMMIT_MESSAGE: $(git log -1 --pretty=%B)
-          REGISTRY_USERNAME: $DOCKERHUB_USERNAME
-          REGISTRY_PASSWORD: $DOCKERHUB_PASSWORD
-          IMAGE: asmacarma/asma-pipe-multiv
-          CHANGELOG: "false"
-          #GIT_PUSH: "false"
-          TAG: "false"
-          #$REGISTRY_URL/bitbucketpipelines/$BITBUCKET_REPO_SLUG
-          #REGISTRY_URL: $REGISTRY_URL
+     
       - ./postsetup.sh
 
     services:

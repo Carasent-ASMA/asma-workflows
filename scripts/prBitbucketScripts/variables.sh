@@ -3,6 +3,9 @@
 export MULTIV_DEPLOYMENT_STRATEGY=true
 export BASE_PATH_MULTIV_STRATEGY=https://cdn.advoca.no
 #export COMMIT_MSG=$(git log -1 --pretty=%B)
+LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+LAST_VERSION=$(git describe --abbrev=0 --tags | sed 's/\(.*\)-\(.*\)-g\(.*\)/\1+\2.\3/' | sed 's/v\(.*\)/\1/')
+
 
 
 

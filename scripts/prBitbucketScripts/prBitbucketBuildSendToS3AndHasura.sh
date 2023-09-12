@@ -48,6 +48,7 @@ echo -e "${BASH_LPURP}Upload to S3, replace old build with new if version alread
 deleteFromS3AsmaAppCdn "$VERSION"
 
     #Upload to S3
-echo -e "${BASH_LPURP}Upload to S3 ${BASH_NC}"
-aws --endpoint-url=https://s3.fjit.no s3 cp ./dist s3://asma-app-cdn/${serviceName}/${VERSION}/ --recursive
+publishToS3Bucket
+#echo -e "${BASH_LPURP}Upload to S3 ${BASH_NC}"
+#aws --endpoint-url=https://s3.fjit.no s3 cp ./dist s3://asma-app-cdn/${serviceName}/${VERSION}/ --recursive
 

@@ -55,6 +55,7 @@ function exitIfZeroOrOkMsg(){
     local ERROR_MSG=${3:-$SUCCESS_MSG}
     exitOnGivenNumberOrOkMsg 0 $EXEC_CODE "$SUCCESS_MSG" "$ERROR_MSG"
 }
+
 function deleteFromS3AsmaAppCdn(){
     VERSION_TO_DELETE=${1}
     checkFolderExist=$(aws --endpoint-url=https://s3.fjit.no s3 ls s3://asma-app-cdn/${serviceName}/ | grep -w "${VERSION_TO_DELETE}")
@@ -67,7 +68,11 @@ function deleteFromS3AsmaAppCdn(){
         else
             echo -e "${BASH_LPURP}service: ${BASH_YELLOW}$serviceName${BASH_LPURP} with version: ${BASH_YELLOW}$VERSION_TO_DELETE ${BASH_LPURP}does not exist from before, skip deletion ${BASH_NC}"
     fi
-
+}
+function publishToS3Bucket(){
+    FOLDER_TO_UPLOAD=${1:-"dist"}
+    echo -e "${BASH_LPURP}Upload to S3 ${BASH_NC}"
+    aws --endpoint-url=https://s3.fjit.no s3 cp ./${FOLDER_TO_UPLOAD} s3://asma-app-cdn/${serviceName}/${VERSION}/ --recursive
 }
 function stringContainsSubstring(){
     local STRING=${1}
