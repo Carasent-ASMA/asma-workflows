@@ -2,7 +2,13 @@
 #set -e
 serviceName="asma-scripts"
 
-source $(dirname "$0")/scripts/prBitbucketScripts/setup.sh
+source $(dirname "$0")/scripts/prBitbucketScripts/variables.sh
+
+source $(dirname "$0")/scripts/prBitbucketScripts/helperFns.sh
+
+source $(dirname "$0")/scripts/prBitbucketScripts/prBitbucketfindVersionTypeOrExitIfCommitMsgWrong.sh
+
+source $(dirname "$0")/scripts/prBitbucketScripts/prBitbucketVersionIncrease.sh
 
 publishToS3Bucket "scripts"
 
