@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#COMMIT_MSG=$(git log -1 --pretty=%B)
-
 function findVersionType(){
 
     local MAJOR_REGEX='(feat!|fix!|docs!|style!|refactor!|hotfix!|chore!|revert!|ci!):'

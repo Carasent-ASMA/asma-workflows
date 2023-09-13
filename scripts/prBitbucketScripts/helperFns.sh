@@ -58,11 +58,11 @@ function exitIfZeroOrOkMsg(){
 
 function deleteFromS3AsmaAppCdn(){
     VERSION_TO_DELETE=${1}
-    checkFolderExist=$(aws --endpoint-url=https://s3.fjit.no s3 ls s3://asma-app-cdn/${serviceName}/ | grep -w "${VERSION_TO_DELETE}")
-    checkFolderExistStatus=$?
+    #LIST_OF_FOLDERS=$(aws --endpoint-url=https://s3.fjit.no s3 ls s3://asma-app-cdn/${serviceName}/ | grep -w "${VERSION_TO_DELETE}")
+    #checkFolderExistStatus=$(stringContainsSubstring "$LIST_OF_FOLDERS" "${VERSION_TO_DELETE}" "w" )
 
     #Delete version
-    if [[ $checkFolderExistStatus -eq 0 ]]; then
+    if aws --endpoint-url=https://s3.fjit.no s3 ls s3://asma-app-cdn/${serviceName}/ | grep -w "${VERSION_TO_DELETE}"; then
             echo -e "${BASH_LPURP}service: ${BASH_YELLOW}$serviceName${BASH_LPURP} with version: ${BASH_YELLOW}$VERSION_TO_DELETE ${BASH_LPURP}exsists in s3 bucket asma-app-cdn , deleting${BASH_NC}"
             aws --endpoint-url=https://s3.fjit.no s3 rm s3://asma-app-cdn/${serviceName}/${VERSION_TO_DELETE} --recursive
         else
