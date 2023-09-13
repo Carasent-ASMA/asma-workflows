@@ -5,6 +5,7 @@ export BASE_PATH_MULTIV_STRATEGY=https://cdn.advoca.no
 #export COMMIT_MSG=$(git log -1 --pretty=%B)
 LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B)
 LAST_VERSION=$(git describe --abbrev=0 --tags | sed 's/\(.*\)-\(.*\)-g\(.*\)/\1+\2.\3/' | sed 's/v\(.*\)/\1/')
+serviceName=$(jq -r ".name" package.json)
 
 
 
@@ -21,5 +22,4 @@ ERROR_END="${BASH_RED}----------END ERROR----------${BASH_NC}"
 OK_START="${BASH_GREEN}------START OK--------${BASH_NC}"
 OK_END="${BASH_GREEN}-------END OK---------${BASH_NC}"
 MESSAGE_START="${BASH_CYAN}------START MESSAGE--------${BASH_NC}"
-#serviceName=$(npm run packageName --silent)
 MESSAGE_END="${BASH_CYAN}-------END MESSAGE---------${BASH_NC}"
