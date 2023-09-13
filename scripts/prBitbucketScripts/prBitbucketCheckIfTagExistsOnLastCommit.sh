@@ -13,6 +13,9 @@ if [[ $ERROR_ON_LAST_COMMIT_TAG -eq 1 ]]; then
 
         git tag -d $LAST_COMMIT_TAG
         git push --delete origin $LAST_COMMIT_TAG
+
+        printMsg "reassigning LAST_VERSION after removing tag!"
+        LAST_VERSION=$(git describe --abbrev=0 --tags | sed 's/\(.*\)-\(.*\)-g\(.*\)/\1+\2.\3/' | sed 's/v\(.*\)/\1/')
     else
         okMsg "${BASH_LPURP}current commit clean! ${BASH_GREEN}$LAST_COMMIT_TAG{BASH_NC}"
 fi
