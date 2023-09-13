@@ -12,7 +12,7 @@ if [[ $ERROR_ON_LAST_COMMIT_TAG -eq 1 ]]; then
         warnMsg "commit is already set on current commit! LAST_COMMIT_TAG: $LAST_COMMIT_TAG, ${BASH_RED}removing and continue!"
 
         git tag -d $LAST_COMMIT_TAG
-        git remote push --delete origin $LAST_COMMIT_TAG
+        git push --delete origin $LAST_COMMIT_TAG
     else
         okMsg "${BASH_LPURP}current commit clean! ${BASH_GREEN}$LAST_COMMIT_TAG{BASH_NC}"
 fi
