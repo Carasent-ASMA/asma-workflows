@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-serviceName=$(jq -r ".name" package.json)
 
 source $(dirname "$0")/variables.sh
 
@@ -24,6 +23,7 @@ source $(dirname "$0")/prBitbucketFindVersionTypeOrExitIfCommitMsgWrong.sh
 source $(dirname "$0")/prBitbucketVersionIncrease.sh
 
 #LAST_COMMIT_MSG=$(git log -1 --pretty=%B)
+serviceName=$(jq -r ".name" package.json)    
 
 source $(dirname "$0")/prBitbucketBuildSendToS3AndHasura.sh
 
