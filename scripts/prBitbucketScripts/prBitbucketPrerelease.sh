@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+#set -e
 
 source $(dirname "$0")/variables.sh
 
