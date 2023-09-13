@@ -19,7 +19,7 @@ pnpm install
 #ERROR_PNPM_INSTALL=$(stringContainsSubstring "$resPnpmInstall" "error")
 #echo -e "${BASH_YELLOW}ERROR_PNPM_INSTALL: ${BASH_GREEN}$ERROR_PNPM_INSTALL${BASH_NC}"
 #exitOnGivenNumberOrOkMsg 0 $ERROR_PNPM_INSTALL "$resPnpmInstall"
-TS_V=tsc -v
+TS_V=$(tsc -v)
 echo -e "${BASH_LPURP}typescript v: ${BASH_YELLOW}$TS_V${BASH_NC}"
 echo -e "${BASH_LPURP}run pnpm run build${BASH_NC}"
 pnpm run build
