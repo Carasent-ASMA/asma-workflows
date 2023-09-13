@@ -21,5 +21,4 @@ ERROR_END="${BASH_RED}----------END ERROR----------${BASH_NC}"
 OK_START="${BASH_GREEN}------START OK--------${BASH_NC}"
 OK_END="${BASH_GREEN}-------END OK---------${BASH_NC}"
 MESSAGE_START="${BASH_CYAN}------START MESSAGE--------${BASH_NC}"
-#serviceName=$(npm run packageName --silent)
 MESSAGE_END="${BASH_CYAN}-------END MESSAGE---------${BASH_NC}"

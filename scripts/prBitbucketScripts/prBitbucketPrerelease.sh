@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+serviceName=$(jq -r ".name" package.json)
+
 source $(dirname "$0")/variables.sh
 
 source $(dirname "$0")/helperFns.sh
