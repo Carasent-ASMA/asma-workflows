@@ -5,6 +5,8 @@ source $(dirname "$0")/variables.sh
 
 source $(dirname "$0")/helperFns.sh
 
+source $(dirname "$0")/curlHasuraInsertsFns.sh
+
 source $(dirname "$0")/prBitbucketFindVersionTypeOrExitIfCommitMsgWrong.sh
 
 #source $(dirname "$0")/prBitbucketPersistPrVersion.sh

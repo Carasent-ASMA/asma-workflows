@@ -5,6 +5,9 @@ source $(dirname "$0")/variables.sh
 
 source $(dirname "$0")/helperFns.sh
 
+source $(dirname "$0")/curlHasuraInsertsFns.sh
+
+
 source $(dirname "$0")/prBItbucketGetPrIdFromCommitMsg.sh
 
 #source $(dirname "$0")/prBitbucketChangesetStatus.sh
