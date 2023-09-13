@@ -77,7 +77,7 @@ function publishToS3Bucket(){
 function stringContainsSubstring(){
     local STRING=${1}
     local SUBSTRING=${2}
-    if echo "$increaseVersionType" | grep -qi "$SUBSTRING"; then
+    if echo "$STRING" | grep -qi "$SUBSTRING"; then
         echo 0
     else
         echo 1
