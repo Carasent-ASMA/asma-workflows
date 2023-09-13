@@ -1,7 +1,6 @@
 #!/bin/bash
 #Delete version
 #Check if build is in release mode and delete the prerelease folder /pr${BITBUCKET_PR_ID}
-source "$(dirname "$0")/prBItbucketTagCommitAndPush.sh"
 
 VERSION_TO_DELETE="pr$BITBUCKET_PR_ID"
 
