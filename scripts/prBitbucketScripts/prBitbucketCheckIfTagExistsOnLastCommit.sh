@@ -9,8 +9,10 @@ ERROR_ON_LAST_COMMIT_TAG=$(stringContainsSubstring "$LAST_COMMIT_TAG" "fatal")
 echo "ERROR_ON_LAST_COMMIT_TAG: $ERROR_ON_LAST_COMMIT_TAG"
 
 if [[ $ERROR_ON_LAST_COMMIT_TAG -eq 1 ]]; then
-        errorMsg "commit is already set on current commit! LAST_COMMIT_TAG: $LAST_COMMIT_TAG"
-        exit 1
+        warnMsg "commit is already set on current commit! LAST_COMMIT_TAG: $LAST_COMMIT_TAG, ${BASH_RED}removing and continue!"
+
+        git tag -d $LAST_COMMIT_TAG
+        git remote push --delete origin $LAST_COMMIT_TAG
     else
         okMsg "${BASH_LPURP}current commit clean! ${BASH_GREEN}$LAST_COMMIT_TAG{BASH_NC}"
 fi

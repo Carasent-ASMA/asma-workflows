@@ -16,6 +16,11 @@ function errorMsg(){
     echo -e "$1"
     echo -e "$ERROR_END"
 }
+function warnMsg(){
+    echo -e "$ERROR_START"
+    echo -e "$1"
+    echo -e "$ERROR_END"
+}
 
 function exitOnGivenNumber(){
     local CODE=${1}
