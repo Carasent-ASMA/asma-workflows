@@ -8,4 +8,4 @@ ERROR_ON_LAST_COMMIT_TAG=$(stringContainsSubstring "$LAST_COMMIT_TAG" "fatal")
 
 echo "ERROR_ON_LAST_COMMIT_TAG: $ERROR_ON_LAST_COMMIT_TAG "
 
-exitOnGivenNumber 0 $ERROR_ON_LAST_COMMIT_TAG "tag to last commit is set! LAST_COMMIT_TAG: ${BASH_GREEN}$LAST_COMMIT_TAG${BASH_NC}" 
+exitOnGivenNumber 1 $ERROR_ON_LAST_COMMIT_TAG "tag to last commit is set! LAST_COMMIT_TAG: ${BASH_GREEN}$LAST_COMMIT_TAG${BASH_NC}" 
