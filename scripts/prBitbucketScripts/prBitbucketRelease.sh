@@ -12,7 +12,7 @@ source $(dirname "$0")/prBItbucketGetPrIdFromCommitMsg.sh
 #source $(dirname "$0")/prBitbucketChangeset.sh
 
 #VERSION=$(npm run version --silent)
-source $(dirname "$0")/prBitbucketfindVersionTypeOrExitIfCommitMsgWrong.sh
+source $(dirname "$0")/prBitbucketFindVersionTypeOrExitIfCommitMsgWrong.sh
 
 source $(dirname "$0")/prBitbucketVersionIncrease.sh
 
