@@ -19,15 +19,15 @@ function curlDirectoryMutation(){
     # Print the full response to the console
     echo -e "${BASH_LPURP}Response from Hasura $ENVIRONMENT:${BASH_NC}"
 
-    echo "$res" | grep -qi "error"
-    ERROR=$?
+    #echo "$res" | grep -qi "error"
+    ERROR=$(stringContainsSubstring "$res" "error")
     
     RES_JSON=$(echo "$res" | jq --indent 4)
     
     if [[ $EXIT_IF_ERROR -eq 1 ]]; then
-        exitIfZeroOrOkMsg $ERROR "$RES_JSON"
+            exitOnGivenNumberOrOkMsg 0 $ERROR "$RES_JSON"
         else
-        errorOnGivenNumberOrOkMsg 0 $ERROR "$RES_JSON"
+            errorOnGivenNumberOrOkMsg 0 $ERROR "$RES_JSON"
     fi
     echo -e "${BASH_LPURP}-----${BASH_BLUE}END${BASH_LPURP} HASURA::$ENVIRONMENT_UPPERCASE: ${OPERATION_UPPERCASE}-----${BASH_NC}"
 }
@@ -39,11 +39,11 @@ function curlDirectoryDeleteAppVersion(){
     echo -e "${BASH_YELLOW} delete versions from srv-directory as well. VERSION_TO_DELETE: ${BASH_RED}${VERSION_TO_DELETE}${BASH_NC}"
 
     if [[ -z "$VERSION_TO_DELETE" ]];then
-     echo -e "${BASH_YELLOW}VERSION_TO_DELETE is empty exiting${BASH_NC}" 
-    
-     exit 1
+        echo -e "${BASH_YELLOW}VERSION_TO_DELETE is empty exiting${BASH_NC}" 
+        
+        exit 1
      else
-      echo -e "${BASH_LPURP}VERSION_TO_DELETE from s3: ${BASH_YELLOW}$VERSION_TO_DELETE${BASH_NC}"
+         echo -e "${BASH_LPURP}VERSION_TO_DELETE from s3: ${BASH_YELLOW}$VERSION_TO_DELETE${BASH_NC}"
     fi
 
     #delete version from hasura dev
