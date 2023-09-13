@@ -9,10 +9,10 @@ ERROR_ON_LAST_COMMIT_TAG=$(stringContainsSubstring "$LAST_COMMIT_TAG" "fatal")
 echo "ERROR_ON_LAST_COMMIT_TAG: $ERROR_ON_LAST_COMMIT_TAG"
 
 if [[ $ERROR_ON_LAST_COMMIT_TAG -eq 1 ]]; then
-        errorMsg "$LAST_COMMIT_TAG"
+        errorMsg "commit is already set on current commit! LAST_COMMIT_TAG: $LAST_COMMIT_TAG"
         exit 1
     else
-        okMsg "tag to last commit is set! LAST_COMMIT_TAG: ${BASH_GREEN}$LAST_COMMIT_TAG${BASH_NC}"
+        okMsg "${BASH_LPURP}current commit clean! ${BASH_GREEN}$LAST_COMMIT_TAG{BASH_NC}"
 fi
 
 #exitOnGivenNumber 1 $ERROR_ON_LAST_COMMIT_TAG "tag to last commit is set! LAST_COMMIT_TAG: ${BASH_GREEN}$LAST_COMMIT_TAG${BASH_NC}" 
