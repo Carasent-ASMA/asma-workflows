@@ -9,8 +9,8 @@ cp configs/env.ts generated/__ENV.ts
 echo -e "${LPURP}install globally pnpm${NC}"
 npm i -g pnpm
 
-echo -e "${LPURP}install globally typescript${NC}"
-npm i -g "typescript@$TS_VERSION"
+#echo -e "${LPURP}install globally typescript${NC}"
+#npm i -g "typescript@$TS_VERSION"
 
 echo -e "${BASH_LPURP}run pnpm install${BASH_NC}"
 pnpm install
