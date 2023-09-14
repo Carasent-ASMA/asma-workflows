@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo -e "${BASH_LPURP}create new folder ${BASH_YELLOW}generated${BASH_NC}"
-mkdir generated
+mkdir -p generated
 
 echo -e "${BASH_LPURP}copy config/env.ts to ${BASH_YELLOW}generated ${BASH_LPURP}folder${BASH_NC}"
 cp configs/env.ts generated/__ENV.ts
