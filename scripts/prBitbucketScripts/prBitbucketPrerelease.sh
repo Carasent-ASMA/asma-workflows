@@ -11,7 +11,7 @@ source $(dirname "$0")/prBitbucketFindVersionTypeOrExitIfCommitMsgWrong.sh
 
 #source $(dirname "$0")/prBitbucketPersistPrVersion.sh
 
-VERSION="pr$BITBUCKET_PR_ID"
+export VERSION="pr$BITBUCKET_PR_ID"
 
 serviceName=$(jq -r ".name" package.json)
 
