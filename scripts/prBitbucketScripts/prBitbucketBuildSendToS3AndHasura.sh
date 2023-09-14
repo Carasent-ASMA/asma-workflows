@@ -15,7 +15,7 @@ npm i -g pnpm
 echo -e "${BASH_LPURP}run pnpm install${BASH_NC}"
 pnpm install
 
-TS_V=$(tsc -v)
+TS_V=$(npx tsc -v)
 echo -e "${BASH_LPURP}typescript v: ${BASH_YELLOW}$TS_V${BASH_NC}"
 echo -e "${BASH_LPURP}run pnpm run build${BASH_NC}"
 pnpm run build
