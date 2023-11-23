@@ -58,9 +58,7 @@ function curlDirectoryDeleteAppVersion(){
 
 function curlDirectoryInsertAndCleanNewAppVersion(){
 
-    echo -e "${LAST_COMMIT_MESSAGE}"
-
-    LAST_COMMIT_MESSAGE=$(printf "%q" "$(printf "%q" "${LAST_COMMIT_MESSAGE}")")
+    LAST_COMMIT_MESSAGE=$(echo -n "${LAST_COMMIT_MESSAGE}" | jq -Rs .)
     
     OPERATION_DATA="insert_and_clean_new_app_version (args:{new_service_name:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_pr_id:\\\"pr${BITBUCKET_PR_ID}\\\",new_commit_message:\\\"${LAST_COMMIT_MESSAGE}\\\"}){updated_at}"
 
