@@ -62,6 +62,7 @@ function curlDirectoryInsertAndCleanNewAppVersion(){
     
     OPERATION_DATA="insert_and_clean_new_app_version (args:{new_service_name:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_pr_id:\\\"pr${BITBUCKET_PR_ID}\\\",new_commit_message:\\\"${LAST_COMMIT_MESSAGE}\\\"}){updated_at}"
 
+    echo -e "${LAST_COMMIT_MESSAGE}"
     echo -e "${OPERATION_DATA}"
 
     #insert version into hasura dev
