@@ -58,7 +58,7 @@ function curlDirectoryDeleteAppVersion(){
 
 function curlDirectoryInsertAndCleanNewAppVersion(){
     
-    OPERATION_DATA="insert_and_clean_new_app_version (args:{new_service_name:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_pr_id:\\\"pr${BITBUCKET_PR_ID}\\\",new_commmit_message:\\\"${LAST_COMMIT_MESSAGE}\\\"}){updated_at}"
+    OPERATION_DATA="insert_and_clean_new_app_version (args:{new_service_name:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_pr_id:\\\"pr${BITBUCKET_PR_ID}\\\",new_commit_message:\\\"${LAST_COMMIT_MESSAGE}\\\"}){updated_at}"
 
     #insert version into hasura dev
     curlDirectoryMutation 1 "dev" "$hasuraSecretKeyDev" "$OPERATION_DATA"
