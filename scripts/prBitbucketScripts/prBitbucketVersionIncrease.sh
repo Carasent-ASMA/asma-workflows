@@ -46,17 +46,8 @@ TAG_MSG=$(git rev-list "v$VERSION" 2>&1)
     if echo "$TAG_MSG" | grep -qi "fatal"; then
         okMsg " OK tag does not exist.. continue TAG_MSG: $TAG_MSG"
     else
-        errorMsg "tag already exists! recalculating .. TAG: v$VERSION"
-        
-        export VERSION=$(increaseVersion "$VERSION" "$increaseVersionType")
-        
-        TAG_MSG=$(git rev-list "v$VERSION" 2>&1)
-        
-            if echo "$TAG_MSG" | grep -qi "fatal"; then
-                okMsg " OK tag does not exist.. continue TAG_MSG: $TAG_MSG"
-            else
-                errorMsg "tag already exists! Please fix manually! exitig.. TAG: v$VERSION"
-                exit 1
+        errorMsg "tag already exists! exiting.. TAG: v$VERSION"
+        exit 1
     fi
 
 printMsg "New version: $VERSION"
