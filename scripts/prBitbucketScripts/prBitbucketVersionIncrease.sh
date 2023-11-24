@@ -56,6 +56,7 @@ TAG_MSG=$(git rev-list "v$VERSION" 2>&1)
                 okMsg " OK tag does not exist.. continue TAG_MSG: $TAG_MSG"
             else
                 errorMsg "tag already exists! Please fix manually! exitig.. TAG: v$VERSION"
+                exit 1
     fi
 
 printMsg "New version: $VERSION"
