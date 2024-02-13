@@ -74,8 +74,8 @@ fi
 echo -e "${LPURP}create new folder ${YELLOW}generated${NC}"
 mkdir generated
 
-echo -e "${LPURP}copy config/env.ts to ${YELLOW}generated ${LPURP}folder${NC}"
-cp configs/env.ts generated/__ENV.ts
+echo -e "${LPURP}copy config/env.js to ${YELLOW}generated ${LPURP}folder${NC}"
+cp configs/env.js generated/env.js
 
 git config --global user.email "commits-noreply@bitbucket.org"
 git config --global user.name "bitbucket-pipelines"
@@ -145,8 +145,8 @@ fi
 echo -e "${LPURP}run npm run build${NC}"
 npm run build
 
-echo -e "${LPURP}copy configs/env.ts to dist/assets/__ENV-*.js${NC}"
-cp configs/env.ts dist/assets/__ENV-*.js
+echo -e "${LPURP}copy configs/env.js to dist/assets/env-*.js${NC}"
+cp configs/env.js dist/assets/-*.js
 
 echo -e "${LPURP}Update hasura dev${NC}"
 #Update hasura dev

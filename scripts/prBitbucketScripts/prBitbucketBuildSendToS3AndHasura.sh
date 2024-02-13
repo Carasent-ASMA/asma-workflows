@@ -3,8 +3,8 @@
 echo -e "${BASH_LPURP}create new folder ${BASH_YELLOW}generated${BASH_NC}"
 mkdir -p generated
 
-echo -e "${BASH_LPURP}copy config/env.ts to ${BASH_YELLOW}generated ${BASH_LPURP}folder${BASH_NC}"
-cp configs/env.ts generated/__ENV.ts
+echo -e "${BASH_LPURP}copy config/env.js to ${BASH_YELLOW}generated ${BASH_LPURP}folder${BASH_NC}"
+cp configs/env.js generated/env.js && && npx tsc configs/env.js --declaration --emitDeclarationOnly --outDir generated --allowJs
 
 echo -e "${LPURP}install globally pnpm${NC}"
 npm i -g pnpm
@@ -22,8 +22,8 @@ pnpm run build
 
 
 
-echo -e "${BASH_LPURP}copy configs/env.ts to dist/assets/__ENV-*.js${BASH_NC}"
-cp configs/env.ts dist/assets/__ENV-*.js
+echo -e "${BASH_LPURP}copy configs/env.js to dist/assets/env-*.js${BASH_NC}"
+cp configs/env.js dist/assets/env-*.js
 
 curlDirectoryInsertAndCleanNewAppVersion
 
