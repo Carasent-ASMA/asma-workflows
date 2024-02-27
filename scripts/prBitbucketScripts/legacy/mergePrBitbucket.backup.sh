@@ -145,8 +145,8 @@ fi
 echo -e "${LPURP}run npm run build${NC}"
 npm run build
 
-echo -e "${LPURP}copy configs/env.js to dist/assets/env-*.js${NC}"
-cp configs/env.js dist/assets/-*.js
+#echo -e "${LPURP}copy configs/env.js to dist/assets/env-*.js${NC}"
+#cp configs/env.js dist/assets/-*.js
 
 echo -e "${LPURP}Update hasura dev${NC}"
 #Update hasura dev

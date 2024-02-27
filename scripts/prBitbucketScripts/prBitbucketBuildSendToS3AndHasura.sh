@@ -22,8 +22,8 @@ pnpm run build
 
 
 
-echo -e "${BASH_LPURP}copy configs/env.js to dist/assets/env-*.js${BASH_NC}"
-cp configs/env.js dist/assets/env-*.js
+#echo -e "${BASH_LPURP}copy configs/env.js to dist/assets/env-*.js${BASH_NC}"
+#cp configs/env.js dist/assets/env-*.js
 
 curlDirectoryInsertAndCleanNewAppVersion
 
