@@ -85,7 +85,7 @@ function curlDirectoryInsertAndCleanNewAppVersion(){
 function curlUpdateCustomerUserAppVersionInDev(){
     echo -e "${BASH_LPURP}curlUpdateCustomerUserAppVersionInDev: set new customer_user_app_version for journals: [ADCURIS ADOPUS UNKNOWN] ${BASH_NC}"
 
-    HEADERS="-H 'x-hasura-user-id: \"00000000-0000-0000-0000-000000000000\"'"
+    HEADERS="-H \"x-hasura-user-id: 00000000-0000-0000-0000-000000000000\""
     
     JOURNALS="UNKNOWN ADOPUS ADCURIS"
     
