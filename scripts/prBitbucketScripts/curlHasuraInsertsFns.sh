@@ -5,6 +5,8 @@ function curlDirectoryMutation(){
     ENVIRONMENT=${2}
     ADMIN_SECRET_KEY=${3}
     OPERATION_DATA=${4}
+    local HEADERS=${5:-}
+
     OPERATION=${OPERATION_DATA%% *}
 
     ENVIRONMENT_UPPERCASE=$(echo $ENVIRONMENT | tr '[:lower:]' '[:upper:]')
@@ -14,7 +16,7 @@ function curlDirectoryMutation(){
 
     #Update hasura dev
     #res=$(curlInsertAndCleanNewAppVersion "$hasuraSecretKeydev" "dev")
-    res=$(curl -X POST -H 'content-type: application/json' -H "x-hasura-admin-secret: ${ADMIN_SECRET_KEY}" --data "{\"query\": \"mutation {$OPERATION_DATA}\"}" https://${ENVIRONMENT}.adopus.no/api/directory/v1/graphql)
+    res=$(curl -X POST -H 'content-type: application/json' -H "x-hasura-admin-secret: ${ADMIN_SECRET_KEY}" ${HEADERS} --data "{\"query\": \"mutation {$OPERATION_DATA}\"}" https://${ENVIRONMENT}.adopus.no/api/directory/v1/graphql)
 
     # Print the full response to the console
     echo -e "${BASH_LPURP}Response from Hasura $ENVIRONMENT:${BASH_NC}"
@@ -65,10 +67,31 @@ function curlDirectoryInsertAndCleanNewAppVersion(){
 
     #insert version into hasura dev
     curlDirectoryMutation 1 "dev" "$hasuraSecretKeyDev" "$OPERATION_DATA"
+    
+    #execute operation if VERSION has following format: `numbers.numbers.numbers`
+    if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        #attach new app_versions to journals
+        curlUpdateCustomerUserAppVersionInDev
+    fi
 
     #insert version into hasura stage
     curlDirectoryMutation 0 "stage" "$hasuraSecretKeyStage" "$OPERATION_DATA"
 
     #insert version into hasura prod
     curlDirectoryMutation 0 "www" "$hasuraSecretKeyProd" "$OPERATION_DATA"
+}
+
+function curlUpdateCustomerUserAppVersionInDev(){
+    echo -e "${BASH_LPURP}curlUpdateCustomerUserAppVersionInDev: set new customer_user_app_version for journals: [ADCURIS ADOPUS UNKNOWN] ${BASH_NC}"
+
+    HEADERS="-H 'x-hasura-user-id: 00000000-0000-0000-0000-000000000000'"
+    
+    JOURNALS="UNKNOWN ADOPUS ADCURIS"
+    
+    for JOURNAL in $JOURNALS; do
+        
+        OPERATION_DATA="upsert_customer_user_app_version(args:{new_service:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_journal:\\\"${JOURNAL}\\\"}){updated_at}"
+        
+        curlDirectoryMutation 1 "dev" "$hasuraSecretKeyDev" "$OPERATION_DATA" "$HEADERS"
+    done
 }
