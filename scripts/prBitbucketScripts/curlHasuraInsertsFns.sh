@@ -1,16 +1,16 @@
 #!/bin/bash
 
 function curlDirectoryMutation(){
-    EXIT_IF_ERROR=${1}
-    ENVIRONMENT=${2}
-    ADMIN_SECRET_KEY=${3}
-    OPERATION_DATA=${4}
+    local EXIT_IF_ERROR=${1}
+    local ENVIRONMENT=${2}
+    local ADMIN_SECRET_KEY=${3}
+    local OPERATION_DATA=${4}
     #local HEADERS=${5:-}
 
-    OPERATION=${OPERATION_DATA%% *}
+    local OPERATION=${OPERATION_DATA%% *}
 
-    ENVIRONMENT_UPPERCASE=$(echo $ENVIRONMENT | tr '[:lower:]' '[:upper:]')
-    OPERATION_UPPERCASE=$(echo $OPERATION | tr '[:lower:]' '[:upper:]')
+    local ENVIRONMENT_UPPERCASE=$(echo $ENVIRONMENT | tr '[:lower:]' '[:upper:]')
+    local OPERATION_UPPERCASE=$(echo $OPERATION | tr '[:lower:]' '[:upper:]')
 
     echo -e "${BASH_LPURP}-----${BASH_BLUE}START${BASH_LPURP} HASURA::$ENVIRONMENT_UPPERCASE: ${OPERATION_UPPERCASE}-----${BASH_NC}"
 
@@ -36,8 +36,8 @@ function curlDirectoryMutation(){
 }
 
 function curlDirectoryDeleteAppVersion(){
-    VERSION_TO_DELETE=${1}
-    OPERATION_DATA="delete_app_version (args:{existing_service_name:\\\"${serviceName}\\\",version_to_delete:\\\"${VERSION_TO_DELETE}\\\",is_s3_deleted:true}){updated_at}"
+    local VERSION_TO_DELETE=${1}
+    local OPERATION_DATA="delete_app_version (args:{existing_service_name:\\\"${serviceName}\\\",version_to_delete:\\\"${VERSION_TO_DELETE}\\\",is_s3_deleted:true}){updated_at}"
     
     echo -e "${BASH_YELLOW} delete versions from srv-directory as well. VERSION_TO_DELETE: ${BASH_RED}${VERSION_TO_DELETE}${BASH_NC}"
 
@@ -61,9 +61,9 @@ function curlDirectoryDeleteAppVersion(){
 
 function curlDirectoryInsertAndCleanNewAppVersion(){
 
-    LAST_COMMIT_MESSAGE=$(echo -n "${LAST_COMMIT_MESSAGE}" | jq -Rs @json | sed 's/^"//' | sed 's/"$//' )
+    local LAST_COMMIT_MESSAGE=$(echo -n "${LAST_COMMIT_MESSAGE}" | jq -Rs @json | sed 's/^"//' | sed 's/"$//' )
     
-    OPERATION_DATA="insert_and_clean_new_app_version (args:{new_service_name:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_pr_id:\\\"pr${BITBUCKET_PR_ID}\\\",new_commit_message:${LAST_COMMIT_MESSAGE}}){updated_at}"
+    local OPERATION_DATA="insert_and_clean_new_app_version (args:{new_service_name:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_pr_id:\\\"pr${BITBUCKET_PR_ID}\\\",new_commit_message:${LAST_COMMIT_MESSAGE}}){updated_at}"
 
 
     #insert version into hasura dev
@@ -88,12 +88,12 @@ function curlUpdateCustomerUserAppVersionInDev(){
 
     #HEADERS="-H \"x-hasura-user-id: 00000000-0000-0000-0000-000000000000\""
 
-    JOURNALS="UNKNOWN ADOPUS ADCURIS"
+    local JOURNALS="UNKNOWN ADOPUS ADCURIS"
     
     for JOURNAL in $JOURNALS; do
         
-        OPERATION_DATA="upsert_customer_user_app_version(args:{new_service:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_journal:\\\"${JOURNAL}\\\"}){updated_at}"
+        local CUAV_OPERATION_DATA="upsert_customer_user_app_version(args:{new_service:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_journal:\\\"${JOURNAL}\\\"}){updated_at}"
         
-        curlDirectoryMutation 1 "dev" "$hasuraSecretKeyDev" "$OPERATION_DATA" #"$HEADERS"
+        curlDirectoryMutation 1 "dev" "$hasuraSecretKeyDev" "$CUAV_OPERATION_DATA" #"$HEADERS"
     done
 }
