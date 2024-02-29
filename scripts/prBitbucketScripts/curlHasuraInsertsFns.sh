@@ -53,10 +53,10 @@ function curlDirectoryDeleteAppVersion(){
     curlDirectoryMutation 1 "dev" "$hasuraSecretKeyDev" "$OPERATION_DATA"
 
     #delete version from stage
-    curlDirectoryMutation 0 "stage" "$hasuraSecretKeyStage" "$OPERATION_DATA"
+    curlDirectoryMutation 1 "stage" "$hasuraSecretKeyStage" "$OPERATION_DATA"
 
     #delete version from prod
-    curlDirectoryMutation 0 "www" "$hasuraSecretKeyProd" "$OPERATION_DATA"
+    curlDirectoryMutation 1 "www" "$hasuraSecretKeyProd" "$OPERATION_DATA"
 }
 
 function curlDirectoryInsertAndCleanNewAppVersion(){
