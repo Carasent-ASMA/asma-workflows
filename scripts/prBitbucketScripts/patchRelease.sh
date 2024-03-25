@@ -8,6 +8,11 @@ source $(dirname "$0")/helperFns.sh
 # Get the current branch name
 BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
 
+# Check if there are any differences between the current branch and the remote master branch
+if [ -z "$(git diff origin/master..$BRANCH_NAME)" ]; then
+    warnMsg "No differences with remote master branch. Skipping execution."
+    exit 0
+fi
 
 # Check if the branch name matches the required format
 if [[ $BRANCH_NAME =~ ^releases/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
