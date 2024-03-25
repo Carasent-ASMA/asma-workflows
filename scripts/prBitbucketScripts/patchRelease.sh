@@ -11,7 +11,7 @@ BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
 git pull origin master
 
 # Check if there are any differences between the current branch and the remote master branch
-if [ -z "$(git diff origin/master..$BRANCH_NAME)" ]; then
+if [ -z "$(git diff master..$BRANCH_NAME)" ]; then
     warnMsg "No differences with remote master branch. Skipping execution."
     exit 0
 fi
