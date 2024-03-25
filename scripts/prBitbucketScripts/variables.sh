@@ -5,7 +5,7 @@ export BASE_PATH_MULTIV_STRATEGY=https://cdn.advoca.no
 #export COMMIT_MSG=$(git log -1 --pretty=%B)
 LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B)
 #LAST_VERSION=$(git describe --abbrev=0 --tags | sed 's/\(.*\)-\(.*\)-g\(.*\)/\1+\2.\3/' | sed 's/v\(.*\)/\1/')
-LAST_VERSION=$(git tag -l | grep -E 'v[0-9]+\.[0-9][0-9]+\.[0-9]+$' | sort -V | sed 's/^v//' | tail -n 1)
+LAST_VERSION=$(git tag -l | grep -E 'v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | sed 's/^v//' | tail -n 1)
 
 BASH_RED='\033[0;31m'
 BASH_GREEN='\033[0;32m'
