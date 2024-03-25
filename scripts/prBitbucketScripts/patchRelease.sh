@@ -8,13 +8,9 @@ source $(dirname "$0")/helperFns.sh
 # Get the current branch name
 BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
 
-git pull origin master
+git clone --branch="master"
 
-# Check if there are any differences between the current branch and the remote master branch
-if [ -z "$(git diff master..$BRANCH_NAME)" ]; then
-    warnMsg "No differences with remote master branch. Skipping execution."
-    exit 0
-fi
+
 
 # Check if the branch name matches the required format
 if [[ $BRANCH_NAME =~ ^releases/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -26,6 +22,14 @@ fi
 
 printMsg "Current branch: $BRANCH_NAME"
 printMsg "VERSION_FROM_BRANCH_NAME: $VERSION_FROM_BRANCH_NAME"
+
+# Check if there are any differences between the current branch and the remote master branch
+CURRENT_COMMIT_TAG=$(git describe --tags --exact-match 2>/dev/null)
+
+if [ "$TAG" = "$VERSION_FROM_BRANCH_NAME" ]; then
+    warnMsg "Current commit tag matches with version from current branch name. Skipping execution."
+    exit 0
+fi
 # Get the last tag from the current branch
 
 LAST_TAG=$(git tag -l | grep -E "^$VERSION_FROM_BRANCH_NAME-[0-9]+$" | sort -V | tail -n 1)
