@@ -22,8 +22,11 @@ else
     exit 1
 fi
 
+printMsg "Current branch: $BRANCH_NAME"
+printMsg "VERSION_FROM_BRANCH_NAME: $VERSION_FROM_BRANCH_NAME"
 # Get the last tag from the current branch
-LAST_TAG=$(git describe --abbrev=0 --tags 2>/dev/null)
+
+LAST_TAG=$(git tag -l | grep -E "^$VERSION_FROM_BRANCH_NAME-[0-9]+$" | sort -V | tail -n 1)
 
 # If there's no tag on the current branch, get the version from the branch name
 if [[ -z "$LAST_TAG" ]]; then
@@ -31,9 +34,11 @@ if [[ -z "$LAST_TAG" ]]; then
 fi
 
 # Remove the leading 'v' from the last tag
-LAST_VERSION=${LAST_TAG#v}
+export LAST_VERSION=${LAST_TAG#v}
 
+printMsg "LAST_TAG: $LAST_TAG"
 
+printMsg "LAST_VERSION: $LAST_VERSION"
 
 source $(dirname "$0")/curlHasuraInsertsFns.sh
 
