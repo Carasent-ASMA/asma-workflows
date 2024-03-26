@@ -8,10 +8,6 @@ source $(dirname "$0")/helperFns.sh
 # Get the current branch name
 BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
 
-git clone --branch="master"
-
-
-
 # Check if the branch name matches the required format
 if [[ $BRANCH_NAME =~ ^releases/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     VERSION_FROM_BRANCH_NAME=${BRANCH_NAME#releases/}
