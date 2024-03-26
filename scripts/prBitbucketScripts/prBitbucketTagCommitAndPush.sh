@@ -1,4 +1,4 @@
-if ! [[ -z "$VERSION" ]]; then
+if  [[ -n "$VERSION" && -z "$LAST_COMMIT_VERSION" ]]; then
     
     git tag "v$VERSION"
     resGitTagPush=$(git push --tags 2>&1)

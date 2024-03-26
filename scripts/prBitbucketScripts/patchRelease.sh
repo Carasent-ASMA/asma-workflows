@@ -23,10 +23,7 @@ fi
 printMsg "Current branch: $BRANCH_NAME"
 printMsg "VERSION_FROM_BRANCH_NAME: $VERSION_FROM_BRANCH_NAME"
 
-# Check if there are any differences between the current branch and the remote master branch
-CURRENT_COMMIT_TAG=$(git describe --tags --exact-match 2>/dev/null)
-
-if [ "$TAG" = "$VERSION_FROM_BRANCH_NAME" ]; then
+if [ "v$LAST_COMMIT_VERSION" = "$VERSION_FROM_BRANCH_NAME" ]; then
     warnMsg "Current commit tag matches with version from current branch name. Skipping execution."
     exit 0
 fi

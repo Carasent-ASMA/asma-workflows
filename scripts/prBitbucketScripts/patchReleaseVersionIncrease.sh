@@ -23,9 +23,13 @@ increasePatchVersion() {
 }
 
 #LAST_VERSION=$(git describe --abbrev=0 --tags | sed 's/\(.*\)-\(.*\)-g\(.*\)/\1+\2.\3/' | sed 's/v\(.*\)/\1/' )
-printMsg "Last version: $LAST_VERSION"
 
-export VERSION=$(increasePatchVersion "$LAST_VERSION")
+if [ -n "$LAST_COMMIT_VERSION" ]; then
+    export VERSION="$LAST_COMMIT_VERSION"
+else
+    printMsg "Last version: $LAST_VERSION"
+    export VERSION=$(increasePatchVersion "$LAST_VERSION")
+fi
     
 TAG_MSG=$(git rev-list "v$VERSION" 2>&1)
     
