@@ -9,5 +9,5 @@ if  [[ -n "$VERSION" && -z "$LAST_COMMIT_VERSION" ]]; then
     errorOnGivenNumberOrOkMsg 0 $REJECTED "$resGitTagPush"
     else
     
-    errorMsg "VERSION is empty!"
+    warnMsg "VERSION is empty, or ! VERSION: $VERSION, LAST_COMMIT_VERSION: $LAST_COMMIT_VERSION"
 fi
