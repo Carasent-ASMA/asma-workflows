@@ -8,7 +8,7 @@ LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B)
 export LAST_VERSION=$(git tag -l | grep -E 'v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | sed 's/^v//' | tail -n 1)
 
 
-LAST_COMMIT_TAG=$(git describe --tags --exact-match 2>/dev/null)
+LAST_COMMIT_TAG=$(git describe --tags --exact-match 2>/dev/null || true)
 export LAST_COMMIT_VERSION=${LAST_COMMIT_TAG#v}
 
 if [[ -n "$LAST_COMMIT_VERSION" ]]; then
