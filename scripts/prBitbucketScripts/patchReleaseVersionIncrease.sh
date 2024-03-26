@@ -31,13 +31,13 @@ else
     export VERSION=$(increasePatchVersion "$LAST_VERSION")
 fi
     
-TAG_MSG=$(git rev-list "v$VERSION" 2>&1)
-    
-    if echo "$TAG_MSG" | grep -qi "fatal"; then
-        okMsg " OK tag does not exist.. continue TAG_MSG: $TAG_MSG"
-    else
-        errorMsg "tag already exists! exiting.. TAG: v$VERSION"
-        exit 1
-    fi
+#TAG_MSG=$(git rev-list "v$VERSION" 2>&1)
+#    
+#    if echo "$TAG_MSG" | grep -qi "fatal"; then
+#        okMsg " OK tag does not exist.. continue TAG_MSG: $TAG_MSG"
+#    else
+#        errorMsg "tag already exists! exiting.. TAG: v$VERSION"
+#        exit 1
+#    fi
 
 printMsg "patch version: $VERSION"
