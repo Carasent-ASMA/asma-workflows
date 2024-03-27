@@ -8,7 +8,7 @@ source $(dirname "$0")/helperFns.sh
 # Get the current branch name
 BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
 
-export LAST_VERSION_CURRENT_BRANCH=$(git describe --tags | grep -E 'v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+export LAST_VERSION_CURRENT_BRANCH=$(git tag --merged | grep -E 'v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
 
 # Check if the branch name matches the required format
 if [[ $BRANCH_NAME =~ ^releases/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
