@@ -11,9 +11,6 @@ export LAST_VERSION=$(git tag -l | grep -E 'v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V 
 LAST_COMMIT_TAG=$(git describe --tags --exact-match 2>/dev/null || true)
 export LAST_COMMIT_VERSION=${LAST_COMMIT_TAG#v}
 
-if [[ -n "$LAST_COMMIT_VERSION" ]]; then
-    okMsg "current branch is taget with version: $LAST_COMMIT_VERSION, using it as increased version"
-fi
 
 
 BASH_RED='\033[0;31m'
@@ -31,3 +28,7 @@ OK_START="${BASH_GREEN}------START OK--------${BASH_NC}"
 OK_END="${BASH_GREEN}-------END OK---------${BASH_NC}"
 MESSAGE_START="${BASH_CYAN}------START MESSAGE--------${BASH_NC}"
 MESSAGE_END="${BASH_CYAN}-------END MESSAGE---------${BASH_NC}"
+
+if [[ -n "$LAST_COMMIT_VERSION" ]]; then
+    echo -e "${BASH_GREEN}current branch is taget with version: $LAST_COMMIT_VERSION, using it as increased version${BASH_NC}"
+fi
