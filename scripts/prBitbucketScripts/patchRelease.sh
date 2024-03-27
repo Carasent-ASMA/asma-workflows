@@ -8,7 +8,7 @@ source $(dirname "$0")/helperFns.sh
 # Get the current branch name
 BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
 
-
+export LAST_VERSION_CURRENT_BRANCH=$(git describe --tags | grep -E 'v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
 
 # Check if the branch name matches the required format
 if [[ $BRANCH_NAME =~ ^releases/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -21,7 +21,7 @@ fi
 printMsg "Current branch: $BRANCH_NAME"
 printMsg "VERSION_FROM_BRANCH_NAME: $VERSION_FROM_BRANCH_NAME"
 
-if [ "$LAST_VERSION" != "$VERSION_FROM_BRANCH_NAME" ]; then
+if [ "$LAST_VERSION_CURRENT_BRANCH" != "$VERSION_FROM_BRANCH_NAME" ]; then
     errorMsg "Version from branch name is not last available tag on current branch, branch name version tag sall be only last available stable tag from current branch."
     exit 1
 fi
