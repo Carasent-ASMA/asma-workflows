@@ -97,3 +97,8 @@ function curlUpdateCustomerUserAppVersionInDev(){
         curlDirectoryMutation 1 "dev" "$hasuraSecretKeyDev" "$CUAV_OPERATION_DATA" #"$HEADERS"
     done
 }
+
+export -f curlDirectoryMutation
+export -f curlDirectoryDeleteAppVersion
+export -f curlDirectoryInsertAndCleanNewAppVersion
+export -f curlUpdateCustomerUserAppVersionInDev

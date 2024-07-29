@@ -88,3 +88,15 @@ function stringContainsSubstring(){
         echo 1
     fi
 }
+
+export -f okMsg
+export -f printMsg
+export -f errorMsg
+export -f warnMsg
+export -f exitOnGivenNumber
+export -f exitOnGivenNumberOrOkMsg
+export -f errorOnGivenNumberOrOkMsg
+export -f exitIfZeroOrOkMsg
+export -f deleteFromS3AsmaAppCdn
+export -f publishToS3Bucket
+export -f stringContainsSubstring

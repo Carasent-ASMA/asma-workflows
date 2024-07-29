@@ -41,3 +41,6 @@ fi
 #    fi
 
 printMsg "patch version: $VERSION"
+
+export -f increasePartitionOrSetToZero
+export -f increasePatchVersion
