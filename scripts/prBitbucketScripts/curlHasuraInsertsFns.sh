@@ -37,7 +37,8 @@ function curlDirectoryMutation(){
 
 function curlDirectoryDeleteAppVersion(){
     local VERSION_TO_DELETE=${1}
-    local OPERATION_DATA="delete_app_version (args:{existing_service_name:\\\"${serviceName}\\\",version_to_delete:\\\"${VERSION_TO_DELETE}\\\",is_s3_deleted:true}){updated_at}"
+    local NEW_VERSION=${2}
+    local OPERATION_DATA="delete_app_version (args:{existing_service_name:\\\"${serviceName}\\\",version_to_delete:\\\"${VERSION_TO_DELETE}\\\",is_s3_deleted:true,new_version:\\\"${NEW_VERSION}\\\"}){updated_at}"
     
     echo -e "${BASH_YELLOW} delete versions from srv-directory as well. VERSION_TO_DELETE: ${BASH_RED}${VERSION_TO_DELETE}${BASH_NC}"
 

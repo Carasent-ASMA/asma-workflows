@@ -19,7 +19,7 @@ if [[ $IS_PR -eq 1 ]]; then
     deleteFromS3AsmaAppCdn "$VERSION_TO_DELETE"
     
     
-    curlDirectoryDeleteAppVersion "$VERSION_TO_DELETE"
+    curlDirectoryDeleteAppVersion "$VERSION_TO_DELETE"  "$VERSION"
 else
     echo -e "${BASH_LPURP}Skip deletion for: ${BASH_GREEN}$VERSION_TO_DELETE${BASH_NC}"
 fi
