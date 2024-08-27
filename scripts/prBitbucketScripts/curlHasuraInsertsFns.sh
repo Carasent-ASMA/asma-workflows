@@ -51,13 +51,13 @@ function curlDirectoryDeleteAppVersion(){
     fi
 
     #delete version from hasura dev
-    curlDirectoryMutation 1 "dev" "$hasuraSecretKeyDev" "$OPERATION_DATA"
+    curlDirectoryMutation 1 "web.dev" "$hasuraSecretKeyDev" "$OPERATION_DATA"
 
     #delete version from stage
-    curlDirectoryMutation 1 "stage" "$hasuraSecretKeyStage" "$OPERATION_DATA"
+    curlDirectoryMutation 1 "web.stage" "$hasuraSecretKeyStage" "$OPERATION_DATA"
 
     #delete version from prod
-    curlDirectoryMutation 1 "www" "$hasuraSecretKeyProd" "$OPERATION_DATA"
+    curlDirectoryMutation 1 "web" "$hasuraSecretKeyProd" "$OPERATION_DATA"
 }
 
 function curlDirectoryInsertAndCleanNewAppVersion(){
@@ -68,7 +68,7 @@ function curlDirectoryInsertAndCleanNewAppVersion(){
 
 
     #insert version into hasura dev
-    curlDirectoryMutation 1 "dev" "$hasuraSecretKeyDev" "$OPERATION_DATA"
+    curlDirectoryMutation 1 "web.dev" "$hasuraSecretKeyDev" "$OPERATION_DATA"
     
     #execute operation if VERSION has following format: `numbers.numbers.numbers`
     if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -78,10 +78,10 @@ function curlDirectoryInsertAndCleanNewAppVersion(){
     fi
 
     #insert version into hasura stage
-    curlDirectoryMutation 0 "stage" "$hasuraSecretKeyStage" "$OPERATION_DATA"
+    curlDirectoryMutation 0 "web.stage" "$hasuraSecretKeyStage" "$OPERATION_DATA"
 
     #insert version into hasura prod
-    curlDirectoryMutation 0 "www" "$hasuraSecretKeyProd" "$OPERATION_DATA"
+    curlDirectoryMutation 0 "web.www" "$hasuraSecretKeyProd" "$OPERATION_DATA"
 }
 
 function curlUpdateCustomerUserAppVersionInDev(){
@@ -95,7 +95,7 @@ function curlUpdateCustomerUserAppVersionInDev(){
         
         local CUAV_OPERATION_DATA="upsert_customer_user_app_version(args:{new_service:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_journal:\\\"${JOURNAL}\\\"}){updated_at}"
         
-        curlDirectoryMutation 1 "dev" "$hasuraSecretKeyDev" "$CUAV_OPERATION_DATA" #"$HEADERS"
+        curlDirectoryMutation 1 "web.dev" "$hasuraSecretKeyDev" "$CUAV_OPERATION_DATA" #"$HEADERS"
     done
 }
 
