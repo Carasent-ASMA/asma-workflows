@@ -81,7 +81,7 @@ function curlDirectoryInsertAndCleanNewAppVersion(){
     curlDirectoryMutation 0 "web.stage" "$hasuraSecretKeyStage" "$OPERATION_DATA"
 
     #insert version into hasura prod
-    curlDirectoryMutation 0 "web.www" "$hasuraSecretKeyProd" "$OPERATION_DATA"
+    curlDirectoryMutation 0 "web" "$hasuraSecretKeyProd" "$OPERATION_DATA"
 }
 
 function curlUpdateCustomerUserAppVersionInDev(){
