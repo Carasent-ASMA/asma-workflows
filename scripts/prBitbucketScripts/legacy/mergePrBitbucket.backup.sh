@@ -220,22 +220,22 @@ if echo "$hasuraResponseProd" | grep -qi "error"; then
     echo -e "$OK_END"
 fi
 
-checkFolderExist=$(aws --endpoint-url=https://s3.fjit.no s3 ls s3://asma-app-cdn/${serviceName}/ | grep -w "${VERSION}")
+checkFolderExist=$(aws --endpoint-url=https://ipv4.s3.dsit.no s3 ls s3://asma-app-cdn/${serviceName}/ | grep -w "${VERSION}")
 checkFolderExistStatus=$?
 
 #Upload to S3
 echo -e "${LPURP}if else Block Upload to S3${NC}"
 
 if [[ $checkFolderExistStatus -eq 1 ]]; then
-#if echo aws --endpoint-url=https://s3.fjit.no s3 ls s3://asma-app-cdn/${serviceName}/ | grep -w "${VERSION}"; then
+#if echo aws --endpoint-url=https://ipv4.s3.dsit.no s3 ls s3://asma-app-cdn/${serviceName}/ | grep -w "${VERSION}"; then
     #Upload to S3
     echo -e "\e[36mUpload to S3 when version does not exist from before${NC}"
-    aws --endpoint-url=https://s3.fjit.no s3 cp ./dist s3://asma-app-cdn/${serviceName}/${VERSION}/ --recursive
+    aws --endpoint-url=https://ipv4.s3.dsit.no s3 cp ./dist s3://asma-app-cdn/${serviceName}/${VERSION}/ --recursive
 else
     #Delete version
     echo -e "\e[36mDelete from S3 when version already exist${NC}"
-    aws --endpoint-url=https://s3.fjit.no s3 rm s3://asma-app-cdn/${serviceName}/${VERSION} --recursive
+    aws --endpoint-url=https://ipv4.s3.dsit.no s3 rm s3://asma-app-cdn/${serviceName}/${VERSION} --recursive
     #Upload to S3
     echo -e "\e[36mUpload to S3 same version after clean${NC}"
-    aws --endpoint-url=https://s3.fjit.no s3 cp ./dist s3://asma-app-cdn/${serviceName}/${VERSION}/ --recursive
+    aws --endpoint-url=https://ipv4.s3.dsit.no s3 cp ./dist s3://asma-app-cdn/${serviceName}/${VERSION}/ --recursive
 fi

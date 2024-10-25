@@ -63,13 +63,13 @@ function exitIfZeroOrOkMsg(){
 
 function deleteFromS3AsmaAppCdn(){
     VERSION_TO_DELETE=${1}
-    #LIST_OF_FOLDERS=$(aws --endpoint-url=https://s3.fjit.no s3 ls s3://asma-app-cdn/${serviceName}/ | grep -w "${VERSION_TO_DELETE}")
+    #LIST_OF_FOLDERS=$(aws --endpoint-url=https://ipv4.s3.dsit.no s3 ls s3://asma-app-cdn/${serviceName}/ | grep -w "${VERSION_TO_DELETE}")
     #checkFolderExistStatus=$(stringContainsSubstring "$LIST_OF_FOLDERS" "${VERSION_TO_DELETE}" "w" )
 
     #Delete version
-    if aws --endpoint-url=https://s3.fjit.no s3 ls s3://asma-app-cdn/${serviceName}/ | grep -w "${VERSION_TO_DELETE}"; then
+    if aws --endpoint-url=https://ipv4.s3.dsit.no s3 ls s3://asma-app-cdn/${serviceName}/ | grep -w "${VERSION_TO_DELETE}"; then
             echo -e "${BASH_LPURP}service: ${BASH_YELLOW}$serviceName${BASH_LPURP} with version: ${BASH_YELLOW}$VERSION_TO_DELETE ${BASH_LPURP}exsists in s3 bucket asma-app-cdn , deleting${BASH_NC}"
-            aws --endpoint-url=https://s3.fjit.no s3 rm s3://asma-app-cdn/${serviceName}/${VERSION_TO_DELETE} --recursive
+            aws --endpoint-url=https://ipv4.s3.dsit.no s3 rm s3://asma-app-cdn/${serviceName}/${VERSION_TO_DELETE} --recursive
         else
             echo -e "${BASH_LPURP}service: ${BASH_YELLOW}$serviceName${BASH_LPURP} with version: ${BASH_YELLOW}$VERSION_TO_DELETE ${BASH_LPURP}does not exist from before, skip deletion ${BASH_NC}"
     fi
@@ -77,7 +77,7 @@ function deleteFromS3AsmaAppCdn(){
 function publishToS3Bucket(){
     FOLDER_TO_UPLOAD=${1:-"dist"}
     echo -e "${BASH_LPURP}Upload to S3 ${BASH_NC}"
-    aws --endpoint-url=https://s3.fjit.no s3 cp ./${FOLDER_TO_UPLOAD} s3://asma-app-cdn/${serviceName}/${VERSION}/ --recursive
+    aws --endpoint-url=https://ipv4.s3.dsit.no s3 cp ./${FOLDER_TO_UPLOAD} s3://asma-app-cdn/${serviceName}/${VERSION}/ --recursive
 }
 function stringContainsSubstring(){
     local STRING=${1}
