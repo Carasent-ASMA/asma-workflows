@@ -1,34 +1,39 @@
-image:
-  name: atlassian/default-image:4
+image: atlassian/default-image:4
 
-test: &test
-  step:
-    name: Test
-    script:
-      - npm install -g bats
-      - chmod a+x test/*.bats
-      - bats test/test.bats
-    services:
-      - docker
+#test: &test
+#  step:
+#    name: Test
+#    script:
+#      - npm install -g bats
+#      - chmod a+x test/*.bats
+#      - bats test/test.bats
+#    services:
+#      - docker
 
-push: &push
-  step:
-    name: Push and Tag
-    image: python:3.10
-    script:
+#push: &push
+#  step:
+#    name: Push and Tag
+#    image: python:3.10
+#    script:
       #- source scripts/prBitbucketScripts/variables.sh
       #- source scripts/prBitbucketScripts/helperFns.sh
       #- source scripts/prBitbucketScripts/prBitbucketFindVersionTypeOrExitIfCommitMsgWrong.sh
       #- source scripts/prBitbucketScripts/prBitbucketVersionIncrease.sh
-      - apt-get update && apt-get install -y awscli
-      - ./release.sh
-    services:
-      - docker
+#      - apt-get update && apt-get install -y awscli
+#      - ./release.sh
+#    services:
+#      - docker
 
 pipelines:
   #default:
   #- <<: *test
   branches:
     master:
+      - step:
+          name: Push scripts to s3
+          script:
+            - apt-get update && apt-get install -y awscli
+            - ./release.sh
+
       #- <<: *test
-      - <<: *push
+      #- <<: *push
