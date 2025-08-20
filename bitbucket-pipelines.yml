@@ -15,10 +15,10 @@ image: atlassian/default-image:4
 #    name: Push and Tag
 #    image: python:3.10
 #    script:
-      #- source scripts/prBitbucketScripts/variables.sh
-      #- source scripts/prBitbucketScripts/helperFns.sh
-      #- source scripts/prBitbucketScripts/prBitbucketFindVersionTypeOrExitIfCommitMsgWrong.sh
-      #- source scripts/prBitbucketScripts/prBitbucketVersionIncrease.sh
+#- source scripts/prBitbucketScripts/variables.sh
+#- source scripts/prBitbucketScripts/helperFns.sh
+#- source scripts/prBitbucketScripts/prBitbucketFindVersionTypeOrExitIfCommitMsgWrong.sh
+#- source scripts/prBitbucketScripts/prBitbucketVersionIncrease.sh
 #      - apt-get update && apt-get install -y awscli
 #      - ./release.sh
 #    services:
@@ -32,7 +32,7 @@ pipelines:
       - step:
           name: Push scripts to s3
           script:
-            - apt-get update && apt-get install -y awscli
+            - apt-get update && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install tzdata awscli
             - ./release.sh
 
       #- <<: *test
