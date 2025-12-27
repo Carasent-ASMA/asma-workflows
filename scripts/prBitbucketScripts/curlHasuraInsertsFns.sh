@@ -74,7 +74,7 @@ function curlDirectoryInsertAndCleanNewAppVersion(){
         JIRA_ISSUE_ID="\\\"${JIRA_KEY}\\\""
     fi
     
-    local OPERATION_DATA="insert_and_clean_new_app_version (args:{new_service_name:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_pr_id:\\\"pr${BITBUCKET_PR_ID}\\\",new_commit_message:${LAST_COMMIT_MESSAGE},jira_issue_id:${JIRA_ISSUE_ID}}){updated_at}"
+    local OPERATION_DATA="revman_insert_and_clean_new_app_version (args:{new_service_name:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_pr_id:\\\"pr${BITBUCKET_PR_ID}\\\",new_commit_message:${LAST_COMMIT_MESSAGE},jira_issue_id:${JIRA_ISSUE_ID}}){updated_at}"
 
 
     #insert version into hasura dev
