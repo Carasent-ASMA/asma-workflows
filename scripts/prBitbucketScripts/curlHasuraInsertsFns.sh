@@ -63,8 +63,18 @@ function curlDirectoryDeleteAppVersion(){
 function curlDirectoryInsertAndCleanNewAppVersion(){
 
     local LAST_COMMIT_MESSAGE=$(echo -n "${LAST_COMMIT_MESSAGE}" | jq -Rs @json | sed 's/^"//' | sed 's/"$//' )
+
+    # Set JIRA_ISSUE_ID to null if JIRA_KEY is empty, otherwise wrap in quotes
+    local JIRA_ISSUE_ID
     
-    local OPERATION_DATA="insert_and_clean_new_app_version (args:{new_service_name:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_pr_id:\\\"pr${BITBUCKET_PR_ID}\\\",new_commit_message:${LAST_COMMIT_MESSAGE},jira_issue_id:\\\"${JIRA_KEY}\\\"}){updated_at}"
+    if [[ -z "$JIRA_KEY" ]]; then
+        echo -e "${BASH_YELLOW}WARNING: JIRA_KEY is not set, jira_issue_id will be set to null${BASH_NC}"
+        JIRA_ISSUE_ID="null"
+    else
+        JIRA_ISSUE_ID="\\\"${JIRA_KEY}\\\""
+    fi
+    
+    local OPERATION_DATA="insert_and_clean_new_app_version (args:{new_service_name:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_pr_id:\\\"pr${BITBUCKET_PR_ID}\\\",new_commit_message:${LAST_COMMIT_MESSAGE},jira_issue_id:${JIRA_ISSUE_ID}}){updated_at}"
 
 
     #insert version into hasura dev
