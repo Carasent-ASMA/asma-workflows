@@ -103,7 +103,7 @@ function curlUpdateCustomerUserAppVersionInDev(){
     
     for JOURNAL in $JOURNALS; do
         
-        local CUAV_OPERATION_DATA="upsert_customer_user_app_version(args:{new_service:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_journal:\\\"${JOURNAL}\\\"}){updated_at}"
+        local CUAV_OPERATION_DATA="revman_upsert_customer_user_app_version(args:{new_service:\\\"${serviceName}\\\",new_version:\\\"${VERSION}\\\",new_journal:\\\"${JOURNAL}\\\"}){updated_at}"
         
         curlDirectoryMutation 1 "web.dev" "$hasuraSecretKeyDev" "$CUAV_OPERATION_DATA" #"$HEADERS"
     done
