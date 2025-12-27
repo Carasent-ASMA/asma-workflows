@@ -3,6 +3,8 @@ set -e
 
 source $(dirname "$0")/variables.sh
 
+source $(dirname "$0")/JiraKeyFromCommitMsg.sh
+
 source $(dirname "$0")/helperFns.sh
 
 # Get the current branch name
