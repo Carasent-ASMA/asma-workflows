@@ -15,8 +15,7 @@ function curlDirectoryMutation(){
     echo -e "${BASH_LPURP}-----${BASH_BLUE}START${BASH_LPURP} HASURA::$ENVIRONMENT_UPPERCASE: ${OPERATION_UPPERCASE}-----${BASH_NC}"
 
     #Update hasura dev
-    #res=$(curlInsertAndCleanNewAppVersion "$hasuraSecretKeydev" "dev")
-    #echo -e "${BASH_LPURP}Aditional Headers: ${HEADERS} ${BASH_NC}"
+   
     res=$(curl -X POST -H 'content-type: application/json' -H "x-hasura-admin-secret: ${ADMIN_SECRET_KEY}" -H "x-hasura-user-id: 00000000-0000-0000-0000-000000000000" -H "x-hasura-journal-user-name: BitbucketScripts" --data "{\"query\": \"mutation {$OPERATION_DATA}\"}" https://${ENVIRONMENT}.adopus.no/api/directory/v1/graphql)
 
     # Print the full response to the console
