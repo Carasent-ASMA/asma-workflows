@@ -4,12 +4,12 @@ COMMIT_MESSAGE=$(git log -1 --pretty=%B)
 FIRST_LINE=$(echo "$COMMIT_MESSAGE" | head -1)
 
 IGNORE_JIRA_KEY_IF_EMPTY=false
-if [[ "$FIRST_LINE" == *"--ignore-jira-key-if-empty"* ]]; then
+if [[ "$FIRST_LINE" == *"—skip-jira-key"* ]]; then
     IGNORE_JIRA_KEY_IF_EMPTY=true
     echo -e "${BASH_RED}╔════════════════════════════════════════════════════════════════════╗${BASH_NC}"
     echo -e "${BASH_RED}║                        ⚠️  WARNING  ⚠️                              ║${BASH_NC}"
     echo -e "${BASH_RED}║                                                                    ║${BASH_NC}"
-    echo -e "${BASH_RED}║  The --ignore-jira-key-if-empty flag is ACTIVE!                    ║${BASH_NC}"
+    echo -e "${BASH_RED}║  The —skip-jira-key flag is ACTIVE!                    ║${BASH_NC}"
     echo -e "${BASH_RED}║                                                                    ║${BASH_NC}"
     echo -e "${BASH_RED}║  This flag should be used CAREFULLY and ONLY with permission       ║${BASH_NC}"
     echo -e "${BASH_RED}║  from team leaders.                                                ║${BASH_NC}"
@@ -38,7 +38,16 @@ if [[ -z "$JIRA_KEY" ]]; then
     if [[ "$IGNORE_JIRA_KEY_IF_EMPTY" == true ]]; then
         echo -e "${BASH_YELLOW}Continuing without JIRA key due to override flag${BASH_NC}"
     else
-        echo -e "${BASH_BLUE}Add --ignore-jira-key-if-empty to commit message to proceed${BASH_NC}"
+        echo -e "${BASH_BLUE}╔════════════════════════════════════════════════════════════════════╗${BASH_NC}"
+        echo -e "${BASH_BLUE}║                        ⚠️  WARNING  ⚠️                              ║${BASH_NC}"
+        echo -e "${BASH_BLUE}║                                                                    ║${BASH_NC}"
+        echo -e "${BASH_BLUE}║  You can add —skip-jira-key to your commit message to proceed.     ║${BASH_NC}"
+        echo -e "${BASH_BLUE}║                                                                    ║${BASH_NC}"
+        echo -e "${BASH_BLUE}║  However, this flag should be used CAREFULLY and ONLY with         ║${BASH_NC}"
+        echo -e "${BASH_BLUE}║  permission from team leaders.                                     ║${BASH_NC}"
+        echo -e "${BASH_BLUE}║                                                                    ║${BASH_NC}"
+        echo -e "${BASH_BLUE}║  Proceeding without JIRA key may skip important tracking.          ║${BASH_NC}"
+        echo -e "${BASH_BLUE}╚════════════════════════════════════════════════════════════════════╝${BASH_NC}"
         exit 1
     fi
 else
