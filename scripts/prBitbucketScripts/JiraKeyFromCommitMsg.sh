@@ -4,12 +4,12 @@ COMMIT_MESSAGE=$(git log -1 --pretty=%B)
 FIRST_LINE=$(echo "$COMMIT_MESSAGE" | head -1)
 
 IGNORE_JIRA_KEY_IF_EMPTY=false
-if [[ "$FIRST_LINE" == *"—skip-jira-key"* ]]; then
+if [[ "$FIRST_LINE" == *"--skip-jira-key"* ]]; then
     IGNORE_JIRA_KEY_IF_EMPTY=true
     echo -e "${BASH_RED}╔════════════════════════════════════════════════════════════════════╗${BASH_NC}"
     echo -e "${BASH_RED}║                        ⚠️  WARNING  ⚠️                              ║${BASH_NC}"
     echo -e "${BASH_RED}║                                                                    ║${BASH_NC}"
-    echo -e "${BASH_RED}║  The —skip-jira-key flag is ACTIVE!                                ║${BASH_NC}"
+    echo -e "${BASH_RED}║  The --skip-jira-key flag is ACTIVE!                                ║${BASH_NC}"
     echo -e "${BASH_RED}║                                                                    ║${BASH_NC}"
     echo -e "${BASH_RED}║  This flag should be used CAREFULLY and ONLY with permission       ║${BASH_NC}"
     echo -e "${BASH_RED}║  from team leaders.                                                ║${BASH_NC}"
@@ -41,7 +41,7 @@ if [[ -z "$JIRA_KEY" ]]; then
         echo -e "${BASH_BLUE}╔════════════════════════════════════════════════════════════════════╗${BASH_NC}"
         echo -e "${BASH_BLUE}║                        ⚠️  WARNING  ⚠️                              ║${BASH_NC}"
         echo -e "${BASH_BLUE}║                                                                    ║${BASH_NC}"
-        echo -e "${BASH_BLUE}║  You can add —skip-jira-key to your commit message to proceed.     ║${BASH_NC}"
+        echo -e "${BASH_BLUE}║  You can add --skip-jira-key to your commit message to proceed.     ║${BASH_NC}"
         echo -e "${BASH_BLUE}║                                                                    ║${BASH_NC}"
         echo -e "${BASH_BLUE}║  However, this flag should be used CAREFULLY and ONLY with         ║${BASH_NC}"
         echo -e "${BASH_BLUE}║  permission from team leaders.                                     ║${BASH_NC}"
