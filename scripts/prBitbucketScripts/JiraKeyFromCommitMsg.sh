@@ -9,7 +9,7 @@ if [[ "$FIRST_LINE" == *"—skip-jira-key"* ]]; then
     echo -e "${BASH_RED}╔════════════════════════════════════════════════════════════════════╗${BASH_NC}"
     echo -e "${BASH_RED}║                        ⚠️  WARNING  ⚠️                              ║${BASH_NC}"
     echo -e "${BASH_RED}║                                                                    ║${BASH_NC}"
-    echo -e "${BASH_RED}║  The —skip-jira-key flag is ACTIVE!                    ║${BASH_NC}"
+    echo -e "${BASH_RED}║  The —skip-jira-key flag is ACTIVE!                                ║${BASH_NC}"
     echo -e "${BASH_RED}║                                                                    ║${BASH_NC}"
     echo -e "${BASH_RED}║  This flag should be used CAREFULLY and ONLY with permission       ║${BASH_NC}"
     echo -e "${BASH_RED}║  from team leaders.                                                ║${BASH_NC}"
