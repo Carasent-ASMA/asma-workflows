@@ -2,11 +2,11 @@
 
 function findVersionType(){
 
-    local MAJOR_REGEX='(feat!|fix!|docs!|style!|refactor!|hotfix!|chore!|revert!|ci!):'
+    local MAJOR_REGEX='(feat|fix|docs|style|refactor|hotfix|chore|revert|ci)(\([^)]*\))?!:'
 
-    local MINOR_REGEX="(feat):"
+    local MINOR_REGEX='(feat)(\([^)]*\))?:'
 
-    local PATCH_REGEX='(fix|docs|style|refactor|hotfix|chore|revert|ci):|^Merged |^Merge'
+    local PATCH_REGEX='(fix|docs|style|refactor|hotfix|chore|revert|ci)(\([^)]*\))?:|^Merged |^Merge'
 
     if [[ $LAST_COMMIT_MESSAGE =~ $MAJOR_REGEX ]]; then
         echo "major"
