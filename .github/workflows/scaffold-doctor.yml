@@ -1,12 +1,7 @@
 name: Scaffold Doctor
 
 on:
-  workflow_dispatch:
-  pull_request:
-    paths:
-      - 'Makefile'
-      - '_tools/asma-cli/**'
-      - '.github/workflows/scaffold-doctor.yml'
+  workflow_call:
 
 jobs:
   scaffold-doctor:
