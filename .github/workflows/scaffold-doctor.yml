@@ -36,14 +36,3 @@ jobs:
 
       - name: Run scaffold doctor (runner readiness)
         run: asma doctor scaffold
-
-      - name: Run scaffold doctor with integrations (optional)
-        if: ${{ secrets.JIRA_BASE_URL != '' && secrets.JIRA_EMAIL != '' && secrets.JIRA_API_TOKEN != '' && secrets.BB_USERNAME != '' && secrets.BB_API_TOKEN != '' && secrets.GH_TOKEN != '' }}
-        env:
-          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
-          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
-          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-          BB_USERNAME: ${{ secrets.BB_USERNAME }}
-          BB_API_TOKEN: ${{ secrets.BB_API_TOKEN }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: asma doctor scaffold --with-integrations
