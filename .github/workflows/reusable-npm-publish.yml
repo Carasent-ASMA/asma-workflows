@@ -109,7 +109,7 @@ jobs:
           PACKAGE_NAME: ${{ inputs.package_name }}
           AI_RELEASE_NOTES_ENABLED: ${{ inputs.ai_release_notes_enabled }}
           AI_RELEASE_NOTES_MODEL: ${{ inputs.ai_release_notes_model }}
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
 
       - name: Publish to npm
         if: steps.check_changes.outputs.code_changed == 'true' && steps.check_publish.outputs.should_publish == 'true' && inputs.publish_npm == true

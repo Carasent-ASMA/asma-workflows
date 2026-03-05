@@ -9,6 +9,19 @@ import tempfile
 from pathlib import Path
 
 
+# Default model for Copilot when not overridden by workflow input or env
+DEFAULT_AI_MODEL = "gpt-5-mini"
+# Allow-list of models to pass to `gh copilot --model` (lowercase)
+ALLOWED_AI_MODELS = {
+    "gpt-5-mini",
+    "gpt-5",
+    "gpt-5.1",
+    "gpt-4.1",
+    "gpt-4o",
+    "gpt-4o-mini",
+}
+
+
 def run_capture(cmd: list[str], allow_fail: bool = False) -> str:
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0 and not allow_fail:
@@ -249,7 +262,13 @@ def cmd_create_release() -> None:
     bump_type = os.environ.get("BUMP_TYPE", "patch")
     package_name = os.environ.get("PACKAGE_NAME", "package")
     ai_enabled = os.environ.get("AI_RELEASE_NOTES_ENABLED", "true").lower() == "true"
-    ai_model = os.environ.get("AI_RELEASE_NOTES_MODEL", "").strip()
+    ai_model = os.environ.get("AI_RELEASE_NOTES_MODEL", DEFAULT_AI_MODEL).strip().lower()
+    # Normalize and validate model; fall back to Copilot account default when invalid
+    if ai_model and ai_model not in ALLOWED_AI_MODELS:
+        print(
+            f"⚠️ AI model '{ai_model}' is not a supported model; ignoring and using Copilot account default"
+        )
+        ai_model = ""
     current_tag = f"v{version}"
 
     tags_raw = run_capture(["git", "tag", "--sort=-creatordate"], allow_fail=True)
@@ -302,7 +321,7 @@ def cmd_create_release() -> None:
         copilot_command.extend(["-p", filled_prompt, "--silent"])
 
         gh_token = (
-            os.environ.get("COPILOT_GITHUB_TOKEN", "").strip()
+            os.environ.get("COPILOT_TOKEN", "").strip()
             or os.environ.get("GH_TOKEN", "").strip()
             or os.environ.get("GITHUB_TOKEN", "").strip()
         )
