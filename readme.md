@@ -26,7 +26,7 @@ Reference workflows from your repository:
 ```yaml
 jobs:
   publish:
-    uses: Carasent-ASMA/asma-workflows/.github/workflows/reusable-publish.yml@master
+    uses: Carasent-ASMA/asma-workflows/.github/workflows/reusable-npm-publish.yml@master
     with:
       publish_npm: true
       package_name: "your-package-name"
@@ -35,7 +35,7 @@ jobs:
 
 ### Available Workflows
 
-#### reusable-publish.yml
+#### reusable-npm-publish.yml
 
 Build and publish npm packages with automatic versioning and tagging.
 
@@ -70,7 +70,7 @@ Located in `scripts/prBitbucketScripts/`, these scripts support Bitbucket CI/CD 
 asma-workflows/
 ├── .github/
 │   └── workflows/              # GitHub Actions reusable workflows
-│       ├── reusable-publish.yml
+│       ├── reusable-npm-publish.yml
 │       └── scaffold-doctor.yml
 ├── scripts/
 │   └── prBitbucketScripts/    # Bitbucket pipeline scripts
