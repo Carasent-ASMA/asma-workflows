@@ -360,14 +360,16 @@ def cmd_create_release() -> None:
             raise RuntimeError("gh copilot returned empty output")
         return content
 
+    ai_failed = False
     if ai_enabled:
         try:
             ai_notes = generate_ai_release_notes()
             custom_notes = f"## AI Release Notes\n\n{ai_notes}\n\n---\n\n{custom_notes}"
             print("✅ AI-generated release notes enabled (gh copilot)")
         except (RuntimeError, TimeoutError, FileNotFoundError) as err:
+            ai_failed = True
             print(
-                f"⚠️ AI release notes generation failed, falling back to commit summary: {err}"
+                f"⚠️ AI release notes generation failed: {err}; falling back to deterministic commit summary and marking step failed after release"
             )
     else:
         print("ℹ️ AI release notes disabled, using commit summary")
@@ -394,6 +396,10 @@ def cmd_create_release() -> None:
     )
 
     Path(notes_path).unlink(missing_ok=True)
+    if ai_failed:
+        # Exit non-zero to mark the step as failed (visible in Actions),
+        # but the release has already been created using deterministic notes.
+        raise SystemExit(2)
 
 
 def cmd_build_summary() -> None:
@@ -446,6 +452,7 @@ def main() -> None:
             "analyze-commits",
             "configure-git",
             "bump-version",
+            "generate-notes",
             "create-release",
             "build-summary",
         ],
@@ -459,6 +466,7 @@ def main() -> None:
         "analyze-commits": cmd_analyze_commits,
         "configure-git": cmd_configure_git,
         "bump-version": cmd_bump_version,
+        "generate-notes": cmd_create_release,  # generate-notes writes notes to NOTES_FILE when provided
         "create-release": cmd_create_release,
         "build-summary": cmd_build_summary,
     }

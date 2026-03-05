@@ -101,6 +101,7 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.check_changes.outputs.code_changed == 'true' && steps.check_publish.outputs.should_publish == 'true'
+        continue-on-error: true
         run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py create-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
