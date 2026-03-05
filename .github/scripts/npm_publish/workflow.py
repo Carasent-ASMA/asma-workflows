@@ -303,14 +303,25 @@ def cmd_create_release() -> None:
             raise RuntimeError(f"Prompt template not found: {prompt_path}")
 
         prompt_template = prompt_path.read_text(encoding="utf-8")
+        # Filter out version-bump and skip-ci commits before sending to AI
+        meaningful_commits = [
+            line
+            for line in commit_lines
+            if not re.search(
+                r"chore.*bump version|\[skip ci\]|chore.*release",
+                line,
+                re.IGNORECASE,
+            )
+        ]
+
         filled_prompt = (
             prompt_template.replace("__PACKAGE_NAME__", package_name)
             .replace("__VERSION__", version)
-            .replace("__BUMP_TYPE__", bump_type)
             .replace("__PREVIOUS_TAG__", previous_tag or "none")
             .replace("__CURRENT_TAG__", current_tag)
             .replace(
-                "__COMMITS__", "\n".join(commit_lines) if commit_lines else "- none"
+                "__COMMITS__",
+                "\n".join(meaningful_commits) if meaningful_commits else "- none",
             )
             .replace("__FILES__", "\n".join(file_lines) if file_lines else "- none")
         )
