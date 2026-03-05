@@ -5,21 +5,7 @@ import pathlib
 import re
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
-
-
-# Default model for Copilot when not overridden by workflow input or env
-DEFAULT_AI_MODEL = "gpt-5-mini"
-# Allow-list of models to pass to `gh copilot --model` (lowercase)
-ALLOWED_AI_MODELS = {
-    "gpt-5-mini",
-    "gpt-5",
-    "gpt-5.1",
-    "gpt-4.1",
-    "gpt-4o",
-    "gpt-4o-mini",
-}
 
 
 def run_capture(cmd: list[str], allow_fail: bool = False) -> str:
@@ -257,151 +243,6 @@ def cmd_bump_version() -> None:
     write_output("version", str(version))
 
 
-def cmd_create_release() -> None:
-    version = os.environ["VERSION"]
-    bump_type = os.environ.get("BUMP_TYPE", "patch")
-    package_name = os.environ.get("PACKAGE_NAME", "package")
-    ai_enabled = os.environ.get("AI_RELEASE_NOTES_ENABLED", "true").lower() == "true"
-    ai_model = os.environ.get("AI_RELEASE_NOTES_MODEL", DEFAULT_AI_MODEL).strip().lower()
-    # Normalize and validate model; fall back to Copilot account default when invalid
-    if ai_model and ai_model not in ALLOWED_AI_MODELS:
-        print(
-            f"⚠️ AI model '{ai_model}' is not a supported model; ignoring and using Copilot account default"
-        )
-        ai_model = ""
-    current_tag = f"v{version}"
-
-    tags_raw = run_capture(["git", "tag", "--sort=-creatordate"], allow_fail=True)
-    tags = [tag.strip() for tag in tags_raw.splitlines() if tag.strip()]
-    previous_tag = next((tag for tag in tags if tag != current_tag), "")
-
-    if previous_tag:
-        commit_range = f"{previous_tag}..{current_tag}"
-    else:
-        commit_range = current_tag
-
-    commits_raw = run_capture(
-        ["git", "log", commit_range, "--pretty=format:- %s (%h)"], allow_fail=True
-    )
-    commit_lines = [line for line in commits_raw.splitlines() if line.strip()]
-    files_raw = run_capture(
-        ["git", "diff", "--name-only", commit_range], allow_fail=True
-    )
-    file_lines = [line for line in files_raw.splitlines() if line.strip()][:200]
-
-    custom_lines = [f"## Commit Summary ({bump_type})"]
-    if commit_lines:
-        custom_lines.extend(commit_lines)
-    else:
-        custom_lines.append("- No commits found for summary")
-
-    custom_notes = "\n".join(custom_lines)
-
-    def generate_ai_release_notes() -> str:
-        prompt_path = Path(__file__).with_name("release_notes_prompt.md")
-        if not prompt_path.exists():
-            raise RuntimeError(f"Prompt template not found: {prompt_path}")
-
-        prompt_template = prompt_path.read_text(encoding="utf-8")
-        # Filter out version-bump and skip-ci commits before sending to AI
-        meaningful_commits = [
-            line
-            for line in commit_lines
-            if not re.search(
-                r"chore.*bump version|\[skip ci\]|chore.*release",
-                line,
-                re.IGNORECASE,
-            )
-        ]
-
-        filled_prompt = (
-            prompt_template.replace("__PACKAGE_NAME__", package_name)
-            .replace("__VERSION__", version)
-            .replace("__PREVIOUS_TAG__", previous_tag or "none")
-            .replace("__CURRENT_TAG__", current_tag)
-            .replace(
-                "__COMMITS__",
-                "\n".join(meaningful_commits) if meaningful_commits else "- none",
-            )
-            .replace("__FILES__", "\n".join(file_lines) if file_lines else "- none")
-        )
-
-        copilot_command = ["gh", "copilot", "--"]
-        if ai_model:
-            copilot_command.extend(["--model", ai_model])
-        copilot_command.extend(["-p", filled_prompt, "--silent"])
-
-        gh_token = (
-            os.environ.get("COPILOT_TOKEN", "").strip()
-            or os.environ.get("GH_TOKEN", "").strip()
-            or os.environ.get("GITHUB_TOKEN", "").strip()
-        )
-        copilot_env = dict(os.environ)
-        if gh_token:
-            copilot_env["COPILOT_GITHUB_TOKEN"] = gh_token
-            copilot_env["GH_TOKEN"] = gh_token
-            copilot_env["GITHUB_TOKEN"] = gh_token
-
-        result = subprocess.run(
-            copilot_command,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=90,
-            env=copilot_env,
-        )
-
-        if result.returncode != 0:
-            reason = (result.stderr or result.stdout or "unknown error").strip()
-            raise RuntimeError(f"gh copilot failed: {reason}")
-
-        content = (result.stdout or "").strip()
-        if not content:
-            raise RuntimeError("gh copilot returned empty output")
-        return content
-
-    ai_failed = False
-    if ai_enabled:
-        try:
-            ai_notes = generate_ai_release_notes()
-            custom_notes = ai_notes
-            print("✅ AI-generated release notes enabled (gh copilot)")
-        except (RuntimeError, TimeoutError, FileNotFoundError) as err:
-            ai_failed = True
-            print(
-                f"⚠️ AI release notes generation failed: {err}; falling back to deterministic commit summary and marking step failed after release"
-            )
-    else:
-        print("ℹ️ AI release notes disabled, using commit summary")
-
-    with tempfile.NamedTemporaryFile(
-        mode="w", encoding="utf-8", delete=False
-    ) as notes_file:
-        notes_file.write(custom_notes + "\n")
-        notes_path = notes_file.name
-
-    run(
-        [
-            "gh",
-            "release",
-            "create",
-            current_tag,
-            "--title",
-            f"Release v{version}",
-            "--generate-notes",
-            "--notes-file",
-            notes_path,
-            "--verify-tag",
-        ]
-    )
-
-    Path(notes_path).unlink(missing_ok=True)
-    if ai_failed:
-        # Exit non-zero to mark the step as failed (visible in Actions),
-        # but the release has already been created using deterministic notes.
-        raise SystemExit(2)
-
-
 def cmd_build_summary() -> None:
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary_path:
@@ -452,8 +293,6 @@ def main() -> None:
             "analyze-commits",
             "configure-git",
             "bump-version",
-            "generate-notes",
-            "create-release",
             "build-summary",
         ],
     )
@@ -466,8 +305,6 @@ def main() -> None:
         "analyze-commits": cmd_analyze_commits,
         "configure-git": cmd_configure_git,
         "bump-version": cmd_bump_version,
-        "generate-notes": cmd_create_release,  # generate-notes writes notes to NOTES_FILE when provided
-        "create-release": cmd_create_release,
         "build-summary": cmd_build_summary,
     }
     command_handlers[args.command]()

@@ -19,15 +19,21 @@ Best-practice requirements:
 
 Release metadata:
 
-- Package: **PACKAGE_NAME**
-- Version: **VERSION**
-- Previous tag: **PREVIOUS_TAG**
-- Current tag: **CURRENT_TAG**
+- Package: {{PACKAGE_NAME}}
+- Version: {{VERSION}}
+- Previous tag: {{PREVIOUS_TAG}}
+- Current tag: {{CURRENT_TAG}}
 
 Commits (newest first):
-**COMMITS**
+{{COMMITS}}
 
 Changed files:
-**FILES**
+{{FILES}}
+
+Structural context (changed functions/methods, signatures, doc comments, call graph):
+
+```text
+{{AST_CONTEXT}}
+```
 
 Return only Markdown suitable for a GitHub release body.

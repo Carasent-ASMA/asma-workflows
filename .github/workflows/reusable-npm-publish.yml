@@ -99,10 +99,14 @@ jobs:
         env:
           BUMP_TYPE: ${{ steps.check_publish.outputs.bump_type }}
 
+      - name: Install AI release-notes dependencies
+        if: steps.check_changes.outputs.code_changed == 'true' && steps.check_publish.outputs.should_publish == 'true' && inputs.ai_release_notes_enabled == true
+        run: pip install tree-sitter tree-sitter-typescript tree-sitter-javascript tree-sitter-python tree-sitter-c-sharp tree-sitter-sql tree-sitter-yaml 2>/dev/null || true
+
       - name: Create GitHub Release
         if: steps.check_changes.outputs.code_changed == 'true' && steps.check_publish.outputs.should_publish == 'true'
         continue-on-error: true
-        run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py create-release
+        run: python .github/_asma-workflows/.github/scripts/npm_publish/release_notes.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.bump_version.outputs.version }}
