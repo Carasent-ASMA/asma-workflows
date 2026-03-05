@@ -1,0 +1,76 @@
+name: Preflight — Verify Secrets & Remotes
+
+on:
+    workflow_dispatch:
+
+jobs:
+    verify:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - name: Verify required secrets are set
+              run: |
+                  PASS=true
+
+                  check_secret() {
+                    local name="$1"
+                    local value="$2"
+                    if [ -z "$value" ]; then
+                      echo "❌ $name is NOT set"
+                      PASS=false
+                    else
+                      echo "✅ $name is set"
+                    fi
+                  }
+
+                  check_secret "DOCKER_HUB_USERNAME" "$DOCKER_HUB_USERNAME"
+                  check_secret "DOCKER_HUB_PASSWORD" "$DOCKER_HUB_PASSWORD"
+                  check_secret "ARGOCD_GITHUB_SSH_KEY" "$ARGOCD_GITHUB_SSH_KEY"
+                  check_secret "BITBUCKET_SSH_KEY" "$BITBUCKET_SSH_KEY"
+                  check_secret "KUBE_CONFIG_PROD" "$KUBE_CONFIG_PROD"
+                  check_secret "KUBE_CONFIG_NONPROD" "$KUBE_CONFIG_NONPROD"
+                  check_secret "HASURA_ADMIN_SECRET" "$HASURA_ADMIN_SECRET"
+
+                  if [ "$PASS" = false ]; then
+                    echo ""
+                    echo "❌ One or more required secrets are missing."
+                    exit 1
+                  fi
+
+                  echo ""
+                  echo "✅ All required secrets are set."
+              env:
+                  DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+                  DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
+                  ARGOCD_GITHUB_SSH_KEY: ${{ secrets.ARGOCD_GITHUB_SSH_KEY }}
+                  BITBUCKET_SSH_KEY: ${{ secrets.BITBUCKET_SSH_KEY }}
+                  KUBE_CONFIG_PROD: ${{ secrets.KUBE_CONFIG_PROD }}
+                  KUBE_CONFIG_NONPROD: ${{ secrets.KUBE_CONFIG_NONPROD }}
+                  HASURA_ADMIN_SECRET: ${{ secrets.HASURA_ADMIN_SECRET }}
+
+            - name: Verify Docker Hub connectivity
+              run: |
+                  echo "Checking Docker Hub login..."
+                  echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+                  echo "✅ Docker Hub login successful."
+                  docker logout
+              env:
+                  DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+                  DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+            - name: Verify GitHub ArgoCD remote is reachable
+              run: |
+                  echo "Checking GitHub ArgoCD remote..."
+                  git ls-remote https://x-access-token:${{ github.token }}@github.com/Carasent-ASMA/asma-argocd.git HEAD > /dev/null 2>&1
+                  echo "✅ GitHub ArgoCD remote is reachable."
+
+            - name: Summary
+              run: |
+                  echo "## Preflight Results" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "✅ All required secrets are configured." >> $GITHUB_STEP_SUMMARY
+                  echo "✅ Docker Hub login succeeded." >> $GITHUB_STEP_SUMMARY
+                  echo "✅ GitHub ArgoCD remote is reachable." >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "> **Note:** Bitbucket SSH key verification and cross-repo workflow_call policy must be verified manually." >> $GITHUB_STEP_SUMMARY

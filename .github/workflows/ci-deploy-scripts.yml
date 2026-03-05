@@ -1,0 +1,32 @@
+name: CI — Deploy Scripts
+
+on:
+    push:
+        branches:
+            - master
+        paths:
+            - ".github/scripts/deploy/**"
+    pull_request:
+        paths:
+            - ".github/scripts/deploy/**"
+
+jobs:
+    lint-and-test:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - name: Install dependencies
+              run: pip install ruff pytest requests
+
+            - name: Lint with ruff
+              run: ruff check .github/scripts/deploy
+
+            - name: Run tests
+              run: pytest .github/scripts/deploy/tests -q

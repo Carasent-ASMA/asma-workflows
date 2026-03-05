@@ -61,7 +61,10 @@
   "terminal.explorerKind": "external",
   "todo-tree.tree.showBadges": true,
   "todo-tree.tree.showCountsInTree": true,
-  "todo-tree.regex.enableMultiLine": true
+  "todo-tree.regex.enableMultiLine": true,
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.analysis.extraPaths": ["${workspaceFolder}/.github/scripts/deploy"],
+  "python.analysis.include": ["${workspaceFolder}/.github/scripts/deploy"]
 
   //"cSpell.language": "en,nb",
   /*  "cSpell.words": [

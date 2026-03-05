@@ -1,0 +1,6 @@
+{
+  "include": [".github/scripts/deploy"],
+  "extraPaths": [".github/scripts/deploy"],
+  "venvPath": ".",
+  "venv": ".venv"
+}

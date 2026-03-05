@@ -1,0 +1,138 @@
+name: Reusable Backend Deploy (Node.js)
+
+on:
+    workflow_call:
+        inputs:
+            environment:
+                description: "Deployment environment"
+                required: false
+                type: string
+                default: "dev"
+            service_name:
+                description: "Service name / docker image name"
+                required: false
+                type: string
+            dockerfile_path:
+                description: "Docker build context and dockerfile directory"
+                required: false
+                type: string
+                default: "."
+            deploy:
+                description: "Whether to update ArgoCD after build"
+                required: false
+                type: boolean
+                default: true
+            create_tag:
+                description: "Whether to create env tag in service repo"
+                required: false
+                type: boolean
+                default: true
+        secrets:
+            DOCKER_HUB_USERNAME:
+                required: true
+            DOCKER_HUB_PASSWORD:
+                required: true
+            BITBUCKET_SSH_KEY:
+                required: true
+            ARGOCD_GITHUB_SSH_KEY:
+                required: true
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: read
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Checkout shared workflow scripts
+              uses: actions/checkout@v4
+              with:
+                  repository: Carasent-ASMA/asma-workflows
+                  ref: master
+                  path: .github/_asma-workflows
+                  sparse-checkout: |
+                      .github/scripts/deploy
+
+            - name: Setup Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - name: Install Python dependencies
+              run: pip install requests
+
+            - name: Docker login
+              uses: docker/login-action@v3
+              with:
+                  username: ${{ secrets.DOCKER_HUB_USERNAME }}
+                  password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+            - name: Build and push docker image
+              run: |
+                  python .github/_asma-workflows/.github/scripts/deploy/deploy.py build-and-push-docker \
+                    --service-name '${{ inputs.service_name != '' && inputs.service_name || github.event.repository.name }}' \
+                    --dockerfile-path '${{ inputs.dockerfile_path }}'
+              env:
+                  COMMIT_SHA: ${{ github.sha }}
+                  SERVICE_NAME: ${{ inputs.service_name }}
+                  WORKSPACE_DIR: ${{ github.workspace }}
+                  DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+                  DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+    deploy:
+        if: inputs.deploy == true
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            packages: read
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Checkout shared workflow scripts
+              uses: actions/checkout@v4
+              with:
+                  repository: Carasent-ASMA/asma-workflows
+                  ref: master
+                  path: .github/_asma-workflows
+                  sparse-checkout: |
+                      .github/scripts/deploy
+
+            - name: Setup Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - name: Install Python dependencies
+              run: pip install requests
+
+            - name: Setup SSH agent with dual keys
+              uses: webfactory/ssh-agent@v0.9.0
+              with:
+                  ssh-private-key: |
+                      ${{ secrets.ARGOCD_GITHUB_SSH_KEY }}
+                      ${{ secrets.BITBUCKET_SSH_KEY }}
+
+            - name: Trust GitHub and Bitbucket hosts
+              run: |
+                  mkdir -p ~/.ssh
+                  ssh-keyscan github.com >> ~/.ssh/known_hosts
+                  ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts
+
+            - name: Update ArgoCD app version
+              run: |
+                  python .github/_asma-workflows/.github/scripts/deploy/deploy.py app-version-update \
+                    --environment '${{ inputs.environment }}' \
+                    --service-name '${{ inputs.service_name != '' && inputs.service_name || github.event.repository.name }}' \
+                    ${{ inputs.create_tag && '--create-tag' || '--no-create-tag' }}
+              env:
+                  COMMIT_SHA: ${{ github.sha }}
+                  SERVICE_NAME: ${{ inputs.service_name }}
+                  WORKSPACE_DIR: ${{ github.workspace }}
+                  GIT_SSH_ORIGIN: git@github.com:${{ github.repository }}.git
+                  ARGOCD_REPO_URL_ORIGIN: git@github.com:Carasent-ASMA/asma-argocd.git
+                  ARGOCD_REPO_URL_BITBUCKET: git@bitbucket.org:carasent/asma-argocd.git
