@@ -1,132 +1,126 @@
 name: Reusable Build and Publish
 
 on:
-    workflow_call:
-        inputs:
-            publish_npm:
-                description: "Whether to publish to npm registry"
-                required: false
-                type: boolean
-                default: true
-            package_name:
-                description: "Package name for logging"
-                required: true
-                type: string
-            ai_release_notes_enabled:
-                description: "Enable AI-generated release notes (falls back automatically if unavailable)"
-                required: false
-                type: boolean
-                default: true
-            ai_release_notes_model:
-                description: "Model name for AI release notes (OpenAI-compatible API)"
-                required: false
-                type: string
-                default: "gpt-4o-mini"
-            ai_release_notes_api_url:
-                description: "OpenAI-compatible chat completions endpoint URL"
-                required: false
-                type: string
-                default: "https://api.openai.com/v1/chat/completions"
+  workflow_call:
+    inputs:
+      publish_npm:
+        description: "Whether to publish to npm registry"
+        required: false
+        type: boolean
+        default: true
+      package_name:
+        description: "Package name for logging"
+        required: true
+        type: string
+      ai_release_notes_enabled:
+        description: "Enable AI-generated release notes (falls back automatically if unavailable)"
+        required: false
+        type: boolean
+        default: true
+      ai_release_notes_model:
+        description: "Model name for AI release notes (gh copilot --model value; empty uses account default)"
+        required: false
+        type: string
+        default: "gpt-5-mini"
 
 jobs:
-    build-and-publish:
-        runs-on: ubuntu-latest
-        permissions:
-            contents: write
-            id-token: write
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
-                  token: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Checkout shared workflow scripts
-              uses: actions/checkout@v4
-              with:
-                  repository: Carasent-ASMA/asma-workflows
-                  ref: master
-                  path: .github/_asma-workflows
-                  sparse-checkout: |
-                      .github/scripts/npm_publish
+      - name: Checkout shared workflow scripts
+        uses: actions/checkout@v4
+        with:
+          repository: Carasent-ASMA/asma-workflows
+          ref: master
+          path: .github/_asma-workflows
+          sparse-checkout: |
+            .github/scripts/npm_publish
 
-            - name: Validate package name
-              run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py validate-package-name
-              env:
-                  PACKAGE_NAME: ${{ inputs.package_name }}
+      - name: Validate package name
+        run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py validate-package-name
+        env:
+          PACKAGE_NAME: ${{ inputs.package_name }}
 
-            - name: Check for code changes
-              id: check_changes
-              run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py check-changes
+      - name: Check for code changes
+        id: check_changes
+        run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py check-changes
 
-            - name: Setup Node.js
-              if: steps.check_changes.outputs.code_changed == 'true'
-              uses: actions/setup-node@v4
-              with:
-                  node-version: "24"
-                  registry-url: "https://registry.npmjs.org"
+      - name: Setup Node.js
+        if: steps.check_changes.outputs.code_changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
 
-            - name: Install pnpm
-              if: steps.check_changes.outputs.code_changed == 'true'
-              uses: pnpm/action-setup@v3
-              with:
-                  version: 9
+      - name: Install pnpm
+        if: steps.check_changes.outputs.code_changed == 'true'
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
 
-            - name: Remove legacy npm config
-              if: steps.check_changes.outputs.code_changed == 'true'
-              run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py remove-legacy-npm-config
+      - name: Remove legacy npm config
+        if: steps.check_changes.outputs.code_changed == 'true'
+        run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py remove-legacy-npm-config
 
-            - name: Install dependencies
-              if: steps.check_changes.outputs.code_changed == 'true'
-              run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        if: steps.check_changes.outputs.code_changed == 'true'
+        run: pnpm install --frozen-lockfile
 
-            - name: Build package
-              if: steps.check_changes.outputs.code_changed == 'true'
-              run: pnpm build
+      - name: Build package
+        if: steps.check_changes.outputs.code_changed == 'true'
+        run: pnpm build
 
-            - name: Analyze commits and determine version bump
-              if: steps.check_changes.outputs.code_changed == 'true'
-              id: check_publish
-              run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py analyze-commits
+      - name: Analyze commits and determine version bump
+        if: steps.check_changes.outputs.code_changed == 'true'
+        id: check_publish
+        run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py analyze-commits
 
-            - name: Configure git
-              if: steps.check_changes.outputs.code_changed == 'true' && steps.check_publish.outputs.should_publish == 'true'
-              run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py configure-git
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  GITHUB_REPOSITORY: ${{ github.repository }}
+      - name: Configure git
+        if: steps.check_changes.outputs.code_changed == 'true' && steps.check_publish.outputs.should_publish == 'true'
+        run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py configure-git
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
 
-            - name: Bump version
-              if: steps.check_changes.outputs.code_changed == 'true' && steps.check_publish.outputs.should_publish == 'true'
-              id: bump_version
-              run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py bump-version
-              env:
-                  BUMP_TYPE: ${{ steps.check_publish.outputs.bump_type }}
+      - name: Bump version
+        if: steps.check_changes.outputs.code_changed == 'true' && steps.check_publish.outputs.should_publish == 'true'
+        id: bump_version
+        run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py bump-version
+        env:
+          BUMP_TYPE: ${{ steps.check_publish.outputs.bump_type }}
 
-            - name: Create GitHub Release
-              if: steps.check_changes.outputs.code_changed == 'true' && steps.check_publish.outputs.should_publish == 'true'
-              run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py create-release
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  VERSION: ${{ steps.bump_version.outputs.version }}
-                  BUMP_TYPE: ${{ steps.check_publish.outputs.bump_type }}
-                  PACKAGE_NAME: ${{ inputs.package_name }}
-                  AI_RELEASE_NOTES_ENABLED: ${{ inputs.ai_release_notes_enabled }}
-                  AI_RELEASE_NOTES_MODEL: ${{ inputs.ai_release_notes_model }}
-                  AI_RELEASE_NOTES_API_URL: ${{ inputs.ai_release_notes_api_url }}
-                  AI_RELEASE_NOTES_API_KEY: ${{ secrets.AI_RELEASE_NOTES_API_KEY }}
+      - name: Create GitHub Release
+        if: steps.check_changes.outputs.code_changed == 'true' && steps.check_publish.outputs.should_publish == 'true'
+        run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py create-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.bump_version.outputs.version }}
+          BUMP_TYPE: ${{ steps.check_publish.outputs.bump_type }}
+          PACKAGE_NAME: ${{ inputs.package_name }}
+          AI_RELEASE_NOTES_ENABLED: ${{ inputs.ai_release_notes_enabled }}
+          AI_RELEASE_NOTES_MODEL: ${{ inputs.ai_release_notes_model }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
 
-            - name: Publish to npm
-              if: steps.check_changes.outputs.code_changed == 'true' && steps.check_publish.outputs.should_publish == 'true' && inputs.publish_npm == true
-              run: npm publish --provenance --access public
+      - name: Publish to npm
+        if: steps.check_changes.outputs.code_changed == 'true' && steps.check_publish.outputs.should_publish == 'true' && inputs.publish_npm == true
+        run: npm publish --provenance --access public
 
-            - name: Build summary
-              run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py build-summary
-              env:
-                  PACKAGE_NAME: ${{ inputs.package_name }}
-                  CODE_CHANGED: ${{ steps.check_changes.outputs.code_changed }}
-                  SHOULD_PUBLISH: ${{ steps.check_publish.outputs.should_publish }}
-                  BUMP_TYPE: ${{ steps.check_publish.outputs.bump_type }}
-                  VERSION: ${{ steps.bump_version.outputs.version }}
-                  PUBLISH_NPM: ${{ inputs.publish_npm }}
+      - name: Build summary
+        run: python .github/_asma-workflows/.github/scripts/npm_publish/workflow.py build-summary
+        env:
+          PACKAGE_NAME: ${{ inputs.package_name }}
+          CODE_CHANGED: ${{ steps.check_changes.outputs.code_changed }}
+          SHOULD_PUBLISH: ${{ steps.check_publish.outputs.should_publish }}
+          BUMP_TYPE: ${{ steps.check_publish.outputs.bump_type }}
+          VERSION: ${{ steps.bump_version.outputs.version }}
+          PUBLISH_NPM: ${{ inputs.publish_npm }}

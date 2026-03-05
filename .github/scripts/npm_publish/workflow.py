@@ -6,10 +6,7 @@ import re
 import subprocess
 import sys
 import tempfile
-import urllib.error
-import urllib.request
 from pathlib import Path
-from typing import Any, cast
 
 
 def run_capture(cmd: list[str], allow_fail: bool = False) -> str:
@@ -252,11 +249,7 @@ def cmd_create_release() -> None:
     bump_type = os.environ.get("BUMP_TYPE", "patch")
     package_name = os.environ.get("PACKAGE_NAME", "package")
     ai_enabled = os.environ.get("AI_RELEASE_NOTES_ENABLED", "true").lower() == "true"
-    ai_api_key = os.environ.get("AI_RELEASE_NOTES_API_KEY", "").strip()
-    ai_model = os.environ.get("AI_RELEASE_NOTES_MODEL", "gpt-4.1").strip()
-    ai_api_url = os.environ.get(
-        "AI_RELEASE_NOTES_API_URL", "https://api.openai.com/v1/chat/completions"
-    ).strip()
+    ai_model = os.environ.get("AI_RELEASE_NOTES_MODEL", "").strip()
     current_tag = f"v{version}"
 
     tags_raw = run_capture(["git", "tag", "--sort=-creatordate"], allow_fail=True)
@@ -303,71 +296,49 @@ def cmd_create_release() -> None:
             .replace("__FILES__", "\n".join(file_lines) if file_lines else "- none")
         )
 
-        payload: dict[str, Any] = {
-            "model": ai_model,
-            "temperature": 0.2,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "You write factual, concise software release notes from provided context.",
-                },
-                {"role": "user", "content": filled_prompt},
-            ],
-        }
+        copilot_command = ["gh", "copilot", "--"]
+        if ai_model:
+            copilot_command.extend(["--model", ai_model])
+        copilot_command.extend(["-p", filled_prompt, "--silent"])
 
-        req = urllib.request.Request(
-            ai_api_url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {ai_api_key}",
-            },
-            method="POST",
+        gh_token = (
+            os.environ.get("COPILOT_GITHUB_TOKEN", "").strip()
+            or os.environ.get("GH_TOKEN", "").strip()
+            or os.environ.get("GITHUB_TOKEN", "").strip()
+        )
+        copilot_env = dict(os.environ)
+        if gh_token:
+            copilot_env["COPILOT_GITHUB_TOKEN"] = gh_token
+            copilot_env["GH_TOKEN"] = gh_token
+            copilot_env["GITHUB_TOKEN"] = gh_token
+
+        result = subprocess.run(
+            copilot_command,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=90,
+            env=copilot_env,
         )
 
-        with urllib.request.urlopen(req, timeout=60) as response:
-            raw_data = json.loads(response.read().decode("utf-8"))
+        if result.returncode != 0:
+            reason = (result.stderr or result.stdout or "unknown error").strip()
+            raise RuntimeError(f"gh copilot failed: {reason}")
 
-        if not isinstance(raw_data, dict):
-            raise RuntimeError("LLM response root is not an object")
-
-        data_obj = cast(dict[str, Any], raw_data)
-        choices_value = data_obj.get("choices")
-        if not isinstance(choices_value, list) or not choices_value:
-            raise RuntimeError("LLM response missing choices")
-
-        first_choice = cast(dict[str, Any], choices_value[0])
-        message_value = first_choice.get("message")
-        if not isinstance(message_value, dict):
-            raise RuntimeError("LLM message is missing or invalid")
-
-        content_value = cast(dict[str, Any], message_value).get("content")
-        if not isinstance(content_value, str):
-            raise RuntimeError("LLM response content is missing or invalid")
-
-        content = content_value.strip()
+        content = (result.stdout or "").strip()
         if not content:
-            raise RuntimeError("LLM response content is empty")
+            raise RuntimeError("gh copilot returned empty output")
         return content
 
-    if ai_enabled and ai_api_key:
+    if ai_enabled:
         try:
             ai_notes = generate_ai_release_notes()
             custom_notes = f"## AI Release Notes\n\n{ai_notes}\n\n---\n\n{custom_notes}"
-            print("✅ AI-generated release notes enabled")
-        except (
-            RuntimeError,
-            urllib.error.URLError,
-            TimeoutError,
-            json.JSONDecodeError,
-        ) as err:
+            print("✅ AI-generated release notes enabled (gh copilot)")
+        except (RuntimeError, TimeoutError, FileNotFoundError) as err:
             print(
                 f"⚠️ AI release notes generation failed, falling back to commit summary: {err}"
             )
-    elif ai_enabled and not ai_api_key:
-        print(
-            "⚠️ AI release notes enabled but AI_RELEASE_NOTES_API_KEY is missing, falling back"
-        )
     else:
         print("ℹ️ AI release notes disabled, using commit summary")
 
