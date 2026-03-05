@@ -5,7 +5,11 @@ import pathlib
 import re
 import subprocess
 import sys
+import tempfile
+import urllib.error
+import urllib.request
 from pathlib import Path
+from typing import Any, cast
 
 
 def run_capture(cmd: list[str], allow_fail: bool = False) -> str:
@@ -246,20 +250,149 @@ def cmd_bump_version() -> None:
 def cmd_create_release() -> None:
     version = os.environ["VERSION"]
     bump_type = os.environ.get("BUMP_TYPE", "patch")
+    package_name = os.environ.get("PACKAGE_NAME", "package")
+    ai_enabled = os.environ.get("AI_RELEASE_NOTES_ENABLED", "true").lower() == "true"
+    ai_api_key = os.environ.get("AI_RELEASE_NOTES_API_KEY", "").strip()
+    ai_model = os.environ.get("AI_RELEASE_NOTES_MODEL", "gpt-4.1").strip()
+    ai_api_url = os.environ.get(
+        "AI_RELEASE_NOTES_API_URL", "https://api.openai.com/v1/chat/completions"
+    ).strip()
+    current_tag = f"v{version}"
+
+    tags_raw = run_capture(["git", "tag", "--sort=-creatordate"], allow_fail=True)
+    tags = [tag.strip() for tag in tags_raw.splitlines() if tag.strip()]
+    previous_tag = next((tag for tag in tags if tag != current_tag), "")
+
+    if previous_tag:
+        commit_range = f"{previous_tag}..{current_tag}"
+    else:
+        commit_range = current_tag
+
+    commits_raw = run_capture(
+        ["git", "log", commit_range, "--pretty=format:- %s (%h)"], allow_fail=True
+    )
+    commit_lines = [line for line in commits_raw.splitlines() if line.strip()]
+    files_raw = run_capture(
+        ["git", "diff", "--name-only", commit_range], allow_fail=True
+    )
+    file_lines = [line for line in files_raw.splitlines() if line.strip()][:200]
+
+    custom_lines = [f"## Commit Summary ({bump_type})"]
+    if commit_lines:
+        custom_lines.extend(commit_lines)
+    else:
+        custom_lines.append("- No commits found for summary")
+
+    custom_notes = "\n".join(custom_lines)
+
+    def generate_ai_release_notes() -> str:
+        prompt_path = Path(__file__).with_name("release_notes_prompt.md")
+        if not prompt_path.exists():
+            raise RuntimeError(f"Prompt template not found: {prompt_path}")
+
+        prompt_template = prompt_path.read_text(encoding="utf-8")
+        filled_prompt = (
+            prompt_template.replace("__PACKAGE_NAME__", package_name)
+            .replace("__VERSION__", version)
+            .replace("__BUMP_TYPE__", bump_type)
+            .replace("__PREVIOUS_TAG__", previous_tag or "none")
+            .replace("__CURRENT_TAG__", current_tag)
+            .replace(
+                "__COMMITS__", "\n".join(commit_lines) if commit_lines else "- none"
+            )
+            .replace("__FILES__", "\n".join(file_lines) if file_lines else "- none")
+        )
+
+        payload: dict[str, Any] = {
+            "model": ai_model,
+            "temperature": 0.2,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You write factual, concise software release notes from provided context.",
+                },
+                {"role": "user", "content": filled_prompt},
+            ],
+        }
+
+        req = urllib.request.Request(
+            ai_api_url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {ai_api_key}",
+            },
+            method="POST",
+        )
+
+        with urllib.request.urlopen(req, timeout=60) as response:
+            raw_data = json.loads(response.read().decode("utf-8"))
+
+        if not isinstance(raw_data, dict):
+            raise RuntimeError("LLM response root is not an object")
+
+        data_obj = cast(dict[str, Any], raw_data)
+        choices_value = data_obj.get("choices")
+        if not isinstance(choices_value, list) or not choices_value:
+            raise RuntimeError("LLM response missing choices")
+
+        first_choice = cast(dict[str, Any], choices_value[0])
+        message_value = first_choice.get("message")
+        if not isinstance(message_value, dict):
+            raise RuntimeError("LLM message is missing or invalid")
+
+        content_value = cast(dict[str, Any], message_value).get("content")
+        if not isinstance(content_value, str):
+            raise RuntimeError("LLM response content is missing or invalid")
+
+        content = content_value.strip()
+        if not content:
+            raise RuntimeError("LLM response content is empty")
+        return content
+
+    if ai_enabled and ai_api_key:
+        try:
+            ai_notes = generate_ai_release_notes()
+            custom_notes = f"## AI Release Notes\n\n{ai_notes}\n\n---\n\n{custom_notes}"
+            print("✅ AI-generated release notes enabled")
+        except (
+            RuntimeError,
+            urllib.error.URLError,
+            TimeoutError,
+            json.JSONDecodeError,
+        ) as err:
+            print(
+                f"⚠️ AI release notes generation failed, falling back to commit summary: {err}"
+            )
+    elif ai_enabled and not ai_api_key:
+        print(
+            "⚠️ AI release notes enabled but AI_RELEASE_NOTES_API_KEY is missing, falling back"
+        )
+    else:
+        print("ℹ️ AI release notes disabled, using commit summary")
+
+    with tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", delete=False
+    ) as notes_file:
+        notes_file.write(custom_notes + "\n")
+        notes_path = notes_file.name
 
     run(
         [
             "gh",
             "release",
             "create",
-            f"v{version}",
+            current_tag,
             "--title",
             f"Release v{version}",
-            "--notes",
-            f"Release v{version} - {bump_type} version bump",
+            "--generate-notes",
+            "--notes-file",
+            notes_path,
             "--verify-tag",
         ]
     )
+
+    Path(notes_path).unlink(missing_ok=True)
 
 
 def cmd_build_summary() -> None:

@@ -12,6 +12,21 @@ on:
                 description: "Package name for logging"
                 required: true
                 type: string
+            ai_release_notes_enabled:
+                description: "Enable AI-generated release notes (falls back automatically if unavailable)"
+                required: false
+                type: boolean
+                default: true
+            ai_release_notes_model:
+                description: "Model name for AI release notes (OpenAI-compatible API)"
+                required: false
+                type: string
+                default: "gpt-4o-mini"
+            ai_release_notes_api_url:
+                description: "OpenAI-compatible chat completions endpoint URL"
+                required: false
+                type: string
+                default: "https://api.openai.com/v1/chat/completions"
 
 jobs:
     build-and-publish:
@@ -96,6 +111,11 @@ jobs:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   VERSION: ${{ steps.bump_version.outputs.version }}
                   BUMP_TYPE: ${{ steps.check_publish.outputs.bump_type }}
+                  PACKAGE_NAME: ${{ inputs.package_name }}
+                  AI_RELEASE_NOTES_ENABLED: ${{ inputs.ai_release_notes_enabled }}
+                  AI_RELEASE_NOTES_MODEL: ${{ inputs.ai_release_notes_model }}
+                  AI_RELEASE_NOTES_API_URL: ${{ inputs.ai_release_notes_api_url }}
+                  AI_RELEASE_NOTES_API_KEY: ${{ secrets.AI_RELEASE_NOTES_API_KEY }}
 
             - name: Publish to npm
               if: steps.check_changes.outputs.code_changed == 'true' && steps.check_publish.outputs.should_publish == 'true' && inputs.publish_npm == true
