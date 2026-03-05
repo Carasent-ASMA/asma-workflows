@@ -85,6 +85,10 @@ jobs:
         with:
           version: 9
 
+      - name: Remove legacy npm config
+        if: steps.check_changes.outputs.code_changed == 'true'
+        run: npm config delete always-auth --location=user || true
+
       - name: Install dependencies
         if: steps.check_changes.outputs.code_changed == 'true'
         run: pnpm install --frozen-lockfile
