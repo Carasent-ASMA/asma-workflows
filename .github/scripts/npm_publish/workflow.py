@@ -364,7 +364,7 @@ def cmd_create_release() -> None:
     if ai_enabled:
         try:
             ai_notes = generate_ai_release_notes()
-            custom_notes = f"## AI Release Notes\n\n{ai_notes}\n\n---\n\n{custom_notes}"
+            custom_notes = ai_notes
             print("✅ AI-generated release notes enabled (gh copilot)")
         except (RuntimeError, TimeoutError, FileNotFoundError) as err:
             ai_failed = True
