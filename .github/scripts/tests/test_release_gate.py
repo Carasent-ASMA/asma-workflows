@@ -11,11 +11,11 @@ from types import ModuleType
 from unittest import mock
 
 
-MODULE_PATH = Path(__file__).resolve().parents[1] / "change_gate.py"
+MODULE_PATH = Path(__file__).resolve().parents[1] / "release_gate.py"
 
 
 def load_module() -> ModuleType:
-    spec = importlib.util.spec_from_file_location("change_gate", MODULE_PATH)
+    spec = importlib.util.spec_from_file_location("release_gate", MODULE_PATH)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Unable to load module spec for {MODULE_PATH}")
     module = importlib.util.module_from_spec(spec)
@@ -23,12 +23,12 @@ def load_module() -> ModuleType:
     return module
 
 
-change_gate = load_module()
+release_gate = load_module()
 
 
-class ChangeGateTests(unittest.TestCase):
+class ReleaseGateTests(unittest.TestCase):
     def test_determine_bump_type_prefers_highest_severity(self) -> None:
-        bump_type, should_publish = change_gate.determine_bump_type(
+        bump_type, should_publish = release_gate.determine_bump_type(
             ["fix: patch", "feat: feature", "refactor!: breaking"]
         )
 
@@ -42,13 +42,13 @@ class ChangeGateTests(unittest.TestCase):
             "chore: Refresh generated assets",
         ]:
             with self.subTest(commit=commit):
-                bump_type, should_publish = change_gate.determine_bump_type([commit])
+                bump_type, should_publish = release_gate.determine_bump_type([commit])
 
                 self.assertEqual(bump_type, "patch")
                 self.assertTrue(should_publish)
 
     def test_has_matching_changes_matches_regex_patterns(self) -> None:
-        changed, first_match = change_gate.has_matching_changes(
+        changed, first_match = release_gate.has_matching_changes(
             ["README.md", "src/index.ts"],
             [r"^src/", r"^package\.json$"],
         )
@@ -57,7 +57,7 @@ class ChangeGateTests(unittest.TestCase):
         self.assertEqual(first_match, "src/index.ts")
 
     def test_has_matching_changes_ignores_non_matching_paths(self) -> None:
-        changed, first_match = change_gate.has_matching_changes(
+        changed, first_match = release_gate.has_matching_changes(
             ["README.md", "docs/guide.md"],
             [r"^src/", r"^package\.json$"],
         )
@@ -73,42 +73,42 @@ class ChangeGateTests(unittest.TestCase):
         )
 
         with mock.patch.object(
-            change_gate, "list_changed_files", return_value=["src/index.ts"]
-        ), mock.patch.object(change_gate, "write_output") as write_output_mock:
-            change_gate.cmd_check_path_changes(args)
+            release_gate, "list_changed_files", return_value=["src/index.ts"]
+        ), mock.patch.object(release_gate, "write_output") as write_output_mock:
+            release_gate.cmd_check_path_changes(args)
 
         write_output_mock.assert_any_call("changed", "true")
         write_output_mock.assert_any_call("code_changed", "true")
 
-    def test_check_release_gate_stops_when_paths_do_not_match(self) -> None:
+    def test_release_gate_stops_when_paths_do_not_match(self) -> None:
         args = SimpleNamespace(
             base_ref="v1.0.0",
             patterns=[r"^src/"],
-            strategy=change_gate.ANALYSIS_STRATEGY_ALL_COMMITS,
+            strategy=release_gate.ANALYSIS_STRATEGY_ALL_COMMITS,
         )
 
         with mock.patch.object(
-            change_gate, "list_changed_files", return_value=["README.md"]
-        ), mock.patch.object(change_gate, "write_output") as write_output_mock:
-            change_gate.cmd_check_release_gate(args)
+            release_gate, "list_changed_files", return_value=["README.md"]
+        ), mock.patch.object(release_gate, "write_output") as write_output_mock:
+            release_gate.cmd_release_gate(args)
 
         write_output_mock.assert_any_call("code_changed", "false")
         write_output_mock.assert_any_call("should_publish", "false")
         write_output_mock.assert_any_call("should_continue", "false")
 
-    def test_check_release_gate_sets_should_continue_for_release_changes(self) -> None:
+    def test_release_gate_sets_should_continue_for_release_changes(self) -> None:
         args = SimpleNamespace(
             base_ref="v1.0.0",
             patterns=[r"^src/"],
-            strategy=change_gate.ANALYSIS_STRATEGY_ALL_COMMITS,
+            strategy=release_gate.ANALYSIS_STRATEGY_ALL_COMMITS,
         )
 
         with mock.patch.object(
-            change_gate, "list_changed_files", return_value=["src/index.ts"]
+            release_gate, "list_changed_files", return_value=["src/index.ts"]
         ), mock.patch.object(
-            change_gate, "load_commit_subjects", return_value=["feat: add source"]
-        ), mock.patch.object(change_gate, "write_output") as write_output_mock:
-            change_gate.cmd_check_release_gate(args)
+            release_gate, "load_commit_subjects", return_value=["feat: add source"]
+        ), mock.patch.object(release_gate, "write_output") as write_output_mock:
+            release_gate.cmd_release_gate(args)
 
         write_output_mock.assert_any_call("code_changed", "true")
         write_output_mock.assert_any_call("should_publish", "true")
@@ -116,7 +116,7 @@ class ChangeGateTests(unittest.TestCase):
         write_output_mock.assert_any_call("should_continue", "true")
 
 
-class ChangeGateGitRepoTests(unittest.TestCase):
+class ReleaseGateGitRepoTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         self.repo_path = Path(self.temp_dir.name)
@@ -155,7 +155,7 @@ class ChangeGateGitRepoTests(unittest.TestCase):
             check=True,
         )
 
-        changed_files = change_gate.list_changed_files("v1.0.0")
+        changed_files = release_gate.list_changed_files("v1.0.0")
 
         self.assertEqual(changed_files, ["src/index.ts"])
 
@@ -170,7 +170,7 @@ class ChangeGateGitRepoTests(unittest.TestCase):
             check=True,
         )
 
-        changed_files = change_gate.list_changed_files(None)
+        changed_files = release_gate.list_changed_files(None)
 
         self.assertEqual(changed_files, ["README.md", "src/index.ts"])
 
@@ -185,8 +185,8 @@ class ChangeGateGitRepoTests(unittest.TestCase):
             check=True,
         )
 
-        commits = change_gate.load_commit_subjects(
-            change_gate.ANALYSIS_STRATEGY_ALL_COMMITS,
+        commits = release_gate.load_commit_subjects(
+            release_gate.ANALYSIS_STRATEGY_ALL_COMMITS,
             None,
         )
 

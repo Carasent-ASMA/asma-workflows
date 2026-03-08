@@ -13,7 +13,7 @@ It is written for both humans and AI agents that need to answer these questions 
 
 ## Current Entry Points
 
-- [change_gate.py](/Users/igor/carasent/asma-modules/shared/asma-workflows/.github/scripts/change_gate.py)
+- [release_gate.py](/Users/igor/carasent/asma-modules/shared/asma-workflows/.github/scripts/release_gate.py)
 - [git_tagging_plan.py](/Users/igor/carasent/asma-modules/shared/asma-workflows/.github/scripts/git_tagging_plan.py)
 - [git_tagging_ops.py](/Users/igor/carasent/asma-modules/shared/asma-workflows/.github/scripts/git_tagging_ops.py)
 
@@ -21,7 +21,7 @@ It is written for both humans and AI agents that need to answer these questions 
 
 The tagging logic follows a plug-and-play split.
 
-- `change_gate` decides whether release work should continue
+- `release_gate` decides whether release work should continue
 - `plan` resolves versions and tags once the workflow has decided to continue
 - `ops` performs git mutations
 
@@ -66,9 +66,9 @@ It is responsible for:
 
 It should not create commits, tags, or remote changes.
 
-### Change Gate Module
+### Release Gate Module
 
-[change_gate.py](/Users/igor/carasent/asma-modules/shared/asma-workflows/.github/scripts/change_gate.py) is the early release gate.
+[release_gate.py](/Users/igor/carasent/asma-modules/shared/asma-workflows/.github/scripts/release_gate.py) is the early release gate.
 
 It is responsible for:
 
@@ -117,7 +117,7 @@ It centralizes:
 ### Read-only gate commands
 
 - `check-path-changes`
-- `check-release-gate`
+- `release-gate`
 
 ### State-changing operations commands
 
@@ -132,7 +132,7 @@ It centralizes:
 
 ### 1. Release Gate
 
-`check-release-gate` decides whether the workflow should continue at all.
+`release-gate` decides whether the workflow should continue at all.
 
 It combines two checks:
 
@@ -281,7 +281,7 @@ With the split:
 
 A typical stable release flow should look like this:
 
-1. run `change_gate.py check-release-gate`
+1. run `release_gate.py release-gate`
 2. stop early if `should_continue=false`
 3. run build and validation steps
 4. run `git_tagging_ops.py fetch-tags`
@@ -297,7 +297,7 @@ This shape keeps git mutation near the end, where failure is cheaper to reason a
 If you only remember one thing, remember this split:
 
 - `plan` answers: what tag should exist?
-- `change_gate` answers: should release work continue at all?
+- `release_gate` answers: should release work continue at all?
 - `ops` answers: now that we know it, do we want to mutate git?
 
 That is the core plug-and-play principle of the current git tagging design.

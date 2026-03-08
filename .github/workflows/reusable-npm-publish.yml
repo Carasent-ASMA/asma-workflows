@@ -44,7 +44,7 @@ jobs:
           ref: master
           path: .github/_asma-workflows
           sparse-checkout: |
-            .github/scripts/change_gate.py
+            .github/scripts/release_gate.py
             .github/scripts/git_tagging_ops.py
             .github/scripts/git_tagging_plan.py
             .github/scripts/git_tagging_shared.py
@@ -55,68 +55,68 @@ jobs:
         env:
           PACKAGE_NAME: ${{ inputs.package_name }}
 
-      - name: Evaluate release gate
-        id: check_release
+      - name: Run release gate
+        id: release_gate
         run: >-
-          python .github/_asma-workflows/.github/scripts/change_gate.py check-release-gate
+          python .github/_asma-workflows/.github/scripts/release_gate.py release-gate
           --patterns ^src/ ^package\.json$ ^pnpm-lock\.yaml$ ^tsconfig\.json$ ^\.npmignore$
           --strategy all_commits_since_last_stable_tag
 
       - name: Setup Node.js
-        if: steps.check_release.outputs.should_continue == 'true'
+        if: steps.release_gate.outputs.should_continue == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
       - name: Install pnpm
-        if: steps.check_release.outputs.should_continue == 'true'
+        if: steps.release_gate.outputs.should_continue == 'true'
         uses: pnpm/action-setup@v3
         with:
           version: 9
 
       - name: Remove legacy npm config
-        if: steps.check_release.outputs.should_continue == 'true'
+        if: steps.release_gate.outputs.should_continue == 'true'
         run: python .github/_asma-workflows/.github/scripts/npm_publish/package_json_npm_release.py remove-legacy-npm-config
 
       - name: Install dependencies
-        if: steps.check_release.outputs.should_continue == 'true'
+        if: steps.release_gate.outputs.should_continue == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Build package
-        if: steps.check_release.outputs.should_continue == 'true'
+        if: steps.release_gate.outputs.should_continue == 'true'
         run: pnpm build
 
       - name: Configure git
-        if: steps.check_release.outputs.should_continue == 'true'
+        if: steps.release_gate.outputs.should_continue == 'true'
         run: python .github/_asma-workflows/.github/scripts/git_tagging_ops.py configure-remote-auth --remote-name origin --remote-url https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git --user-name github-actions[bot] --user-email github-actions[bot]@users.noreply.github.com
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
 
       - name: Fetch latest tags
-        if: steps.check_release.outputs.should_continue == 'true'
+        if: steps.release_gate.outputs.should_continue == 'true'
         run: python .github/_asma-workflows/.github/scripts/git_tagging_ops.py fetch-tags --remote-name origin
 
       - name: Read current package version
-        if: steps.check_release.outputs.should_continue == 'true'
+        if: steps.release_gate.outputs.should_continue == 'true'
         id: package_version
         run: python .github/_asma-workflows/.github/scripts/npm_publish/package_json_npm_release.py read-package-version
 
       - name: Resolve next stable release
-        if: steps.check_release.outputs.should_continue == 'true'
+        if: steps.release_gate.outputs.should_continue == 'true'
         id: resolve_release
-        run: python .github/_asma-workflows/.github/scripts/git_tagging_plan.py resolve-next-stable-release --bump-type ${{ steps.check_release.outputs.bump_type }} --fallback-version ${{ steps.package_version.outputs.version }}
+        run: python .github/_asma-workflows/.github/scripts/git_tagging_plan.py resolve-next-stable-release --bump-type ${{ steps.release_gate.outputs.bump_type }} --fallback-version ${{ steps.package_version.outputs.version }}
 
       - name: Apply version to package.json
-        if: steps.check_release.outputs.should_continue == 'true'
+        if: steps.release_gate.outputs.should_continue == 'true'
         id: apply_version
         run: python .github/_asma-workflows/.github/scripts/npm_publish/package_json_npm_release.py apply-version
         env:
           VERSION: ${{ steps.resolve_release.outputs.version }}
 
       - name: Commit package version and push tag
-        if: steps.check_release.outputs.should_continue == 'true'
+        if: steps.release_gate.outputs.should_continue == 'true'
         run: >-
           python .github/_asma-workflows/.github/scripts/git_tagging_ops.py commit-and-push-follow-tags
           --files ${FILES_TO_COMMIT}
@@ -128,32 +128,32 @@ jobs:
           FILES_TO_COMMIT: ${{ steps.apply_version.outputs.files_to_commit }}
 
       - name: Install AI release-notes dependencies
-        if: steps.check_release.outputs.should_continue == 'true' && inputs.ai_release_notes_enabled == true
+        if: steps.release_gate.outputs.should_continue == 'true' && inputs.ai_release_notes_enabled == true
         run: pip install tree-sitter tree-sitter-typescript tree-sitter-javascript tree-sitter-python tree-sitter-c-sharp tree-sitter-sql tree-sitter-yaml 2>/dev/null || true
 
       - name: Create GitHub Release
-        if: steps.check_release.outputs.should_continue == 'true'
+        if: steps.release_gate.outputs.should_continue == 'true'
         continue-on-error: true
         run: python .github/_asma-workflows/.github/scripts/npm_publish/release_notes.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.apply_version.outputs.version }}
-          BUMP_TYPE: ${{ steps.check_release.outputs.bump_type }}
+          BUMP_TYPE: ${{ steps.release_gate.outputs.bump_type }}
           PACKAGE_NAME: ${{ inputs.package_name }}
           AI_RELEASE_NOTES_ENABLED: ${{ inputs.ai_release_notes_enabled }}
           AI_RELEASE_NOTES_MODEL: ${{ inputs.ai_release_notes_model }}
           COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
 
       - name: Publish to npm
-        if: steps.check_release.outputs.should_continue == 'true' && inputs.publish_npm == true
+        if: steps.release_gate.outputs.should_continue == 'true' && inputs.publish_npm == true
         run: npm publish --provenance --access public
 
       - name: Build summary
         run: python .github/_asma-workflows/.github/scripts/npm_publish/package_json_npm_release.py build-summary
         env:
           PACKAGE_NAME: ${{ inputs.package_name }}
-          CODE_CHANGED: ${{ steps.check_release.outputs.code_changed }}
-          SHOULD_PUBLISH: ${{ steps.check_release.outputs.should_publish }}
-          BUMP_TYPE: ${{ steps.check_release.outputs.bump_type }}
+          CODE_CHANGED: ${{ steps.release_gate.outputs.code_changed }}
+          SHOULD_PUBLISH: ${{ steps.release_gate.outputs.should_publish }}
+          BUMP_TYPE: ${{ steps.release_gate.outputs.bump_type }}
           VERSION: ${{ steps.apply_version.outputs.version }}
           PUBLISH_NPM: ${{ inputs.publish_npm }}

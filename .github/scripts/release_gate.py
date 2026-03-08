@@ -131,7 +131,7 @@ def cmd_check_path_changes(args: argparse.Namespace) -> None:
         print("⏭️  No eligible file changes detected")
 
 
-def cmd_check_release_gate(args: argparse.Namespace) -> None:
+def cmd_release_gate(args: argparse.Namespace) -> None:
     """Check whether the workflow should continue toward a release."""
     base_ref = args.base_ref or get_latest_stable_tag()
     changed_files = list_changed_files(base_ref)
@@ -201,15 +201,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     check_changes_parser.set_defaults(func=cmd_check_path_changes)
 
-    check_release_parser = subparsers.add_parser("check-release-gate")
-    check_release_parser.add_argument("--base-ref")
-    check_release_parser.add_argument("--patterns", nargs="+", required=True)
-    check_release_parser.add_argument(
+    release_gate_parser = subparsers.add_parser("release-gate")
+    release_gate_parser.add_argument("--base-ref")
+    release_gate_parser.add_argument("--patterns", nargs="+", required=True)
+    release_gate_parser.add_argument(
         "--strategy",
         default=ANALYSIS_STRATEGY_ALL_COMMITS,
         choices=sorted(VALID_ANALYSIS_STRATEGIES),
     )
-    check_release_parser.set_defaults(func=cmd_check_release_gate)
+    release_gate_parser.set_defaults(func=cmd_release_gate)
 
     return parser
 
