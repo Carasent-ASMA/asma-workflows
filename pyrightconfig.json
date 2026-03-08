@@ -1,6 +1,20 @@
 {
-  "include": [".github/scripts/deploy"],
-  "extraPaths": [".github/scripts/deploy"],
+  "include": [
+    ".github/scripts",
+    ".github/scripts/npm_publish",
+    ".github/scripts/tests"
+  ],
+  "extraPaths": [".github/scripts", ".github/scripts/npm_publish"],
+  "executionEnvironments": [
+    {
+      "root": ".github/scripts",
+      "extraPaths": [".github/scripts", ".github/scripts/npm_publish"]
+    },
+    {
+      "root": ".github/scripts/tests",
+      "extraPaths": [".github/scripts", ".github/scripts/npm_publish"]
+    }
+  ],
   "venvPath": ".",
   "venv": ".venv"
 }
