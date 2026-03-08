@@ -39,6 +39,7 @@ def load_module(module_name: str, file_name: str) -> ModuleType:
 
 git_tagging_ops = load_module("git_tagging_ops", "git_tagging_ops.py")
 git_tagging_plan = load_module("git_tagging_plan", "git_tagging_plan.py")
+git_tagging_shared = load_module("git_tagging_shared", "git_tagging_shared.py")
 
 
 class GitRepoTestCase(unittest.TestCase):
@@ -75,6 +76,12 @@ class GitRepoTestCase(unittest.TestCase):
 
 
 class GitTaggingTests(GitRepoTestCase):
+    def test_bump_version_minor_resets_patch(self) -> None:
+        self.assertEqual(git_tagging_shared.bump_version("0.2.1", "minor"), "0.3.0")
+
+    def test_bump_version_major_resets_minor_and_patch(self) -> None:
+        self.assertEqual(git_tagging_shared.bump_version("0.2.1", "major"), "1.0.0")
+
     def test_tag_exists_detects_existing_and_missing_tags(self) -> None:
         subprocess.run(["git", "tag", "v1.0.0"], cwd=self.repo_path, check=True)
         self.assertTrue(git_tagging_plan.tag_exists("v1.0.0"))
