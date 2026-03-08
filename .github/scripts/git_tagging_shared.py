@@ -46,8 +46,20 @@ def write_output(key: str, value: str) -> None:
     output_path = os.environ.get("GITHUB_OUTPUT")
     if not output_path:
         return
+
+    # GitHub output commands require heredoc syntax for multiline values.
+    delimiter = "__GITHUB_OUTPUT_EOF__"
+    while delimiter in value:
+        delimiter = f"{delimiter}_X"
+
     with Path(output_path).open("a", encoding="utf-8") as output_file:
-        output_file.write(f"{key}={value}\n")
+        if "\n" not in value and "\r" not in value:
+            output_file.write(f"{key}={value}\n")
+            return
+
+        output_file.write(f"{key}<<{delimiter}\n")
+        output_file.write(f"{value}\n")
+        output_file.write(f"{delimiter}\n")
 
 
 def parse_version(version: str) -> tuple[int, int, int]:
