@@ -134,24 +134,24 @@ def cmd_check_path_changes(args: argparse.Namespace) -> None:
 def cmd_release_gate(args: argparse.Namespace) -> None:
     """Check whether the workflow should continue toward a release."""
     base_ref = args.base_ref or get_latest_stable_tag()
-    changed_files = list_changed_files(base_ref)
-    code_changed, first_match = has_matching_changes(changed_files, args.patterns)
 
-    commits: list[str] = []
-    bump_type = "none"
-    should_publish = False
-    reason_commit: str | None = None
+    # Path-based gating is intentionally disabled. Keep the old logic commented so
+    # it can be restored quickly if the workflow needs file-pattern gating again.
+    # changed_files = list_changed_files(base_ref)
+    # code_changed, first_match = has_matching_changes(changed_files, args.patterns)
+    changed_files: list[str] = []
+    first_match: str | None = None
 
-    if code_changed:
-        commits = load_commit_subjects(args.strategy, base_ref)
-        bump_type, should_publish = determine_bump_type(commits)
-        reason_commit = find_bump_reason_commit(commits, bump_type)
+    commits = load_commit_subjects(args.strategy, base_ref)
+    bump_type, should_publish = determine_bump_type(commits)
+    reason_commit = find_bump_reason_commit(commits, bump_type)
 
-    should_continue = code_changed and should_publish
+    code_changed = should_publish
+    should_continue = should_publish
 
-    print(f"Changed files since {base_ref or 'repository start'}:")
-    for file_path in changed_files:
-        print(file_path)
+    print(
+        f"Release gate uses commit subjects only since {base_ref or 'repository start'}"
+    )
 
     if first_match:
         print(f"Matched eligible file: {first_match}")
@@ -179,11 +179,11 @@ def cmd_release_gate(args: argparse.Namespace) -> None:
         print(f"✅ Continue workflow with {bump_type} release")
         return
 
-    if not code_changed:
-        print("⏭️  Stop early: no eligible file changes detected")
+    if not commits:
+        print("⏭️  Stop early: no commits found for release analysis")
         return
 
-    print("⏭️  Stop early: no release-worthy commits found")
+    print("⏭️  Stop early: no release-worthy commit messages found")
 
 
 def build_parser() -> argparse.ArgumentParser:

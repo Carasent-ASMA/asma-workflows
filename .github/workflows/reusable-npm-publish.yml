@@ -59,7 +59,7 @@ jobs:
         id: release_gate
         run: >-
           python .github/_asma-workflows/.github/scripts/release_gate.py release-gate
-          --patterns ^src/ ^package\.json$ ^pnpm-lock\.yaml$ ^tsconfig\.json$ ^\.npmignore$
+          --patterns ^src/ ^package\.json$ ^pnpm-lock\.yaml$ ^tsconfig\.json$ ^\.npmignore$ 
           --strategy all_commits_since_last_stable_tag
 
       - name: Setup Node.js
