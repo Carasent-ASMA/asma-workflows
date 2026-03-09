@@ -35,7 +35,7 @@ class GitTaggingSharedProtocol(Protocol):
 
     def get_latest_stable_tag(self, merged_only: bool = False) -> str | None: ...
 
-    def load_commit_subjects(
+    def load_commit_messages(
         self,
         strategy: str,
         *,
@@ -63,7 +63,7 @@ VALID_ANALYSIS_STRATEGIES: set[str] = _SHARED.VALID_ANALYSIS_STRATEGIES
 determine_bump_type = _SHARED.determine_bump_type
 find_bump_reason_commit = _SHARED.find_bump_reason_commit
 get_latest_stable_tag = _SHARED.get_latest_stable_tag
-load_commit_subjects_from_shared = _SHARED.load_commit_subjects
+load_commit_messages_from_shared = _SHARED.load_commit_messages
 parse_non_empty_lines = _SHARED.parse_non_empty_lines
 run_capture = _SHARED.run_capture
 write_output = _SHARED.write_output
@@ -98,9 +98,9 @@ def has_matching_changes(
     return False, None
 
 
-def load_commit_subjects(strategy: str, base_ref: str | None) -> list[str]:
-    """Load commit subjects for release analysis."""
-    return load_commit_subjects_from_shared(
+def load_commit_messages(strategy: str, base_ref: str | None) -> list[str]:
+    """Load full commit messages for release analysis."""
+    return load_commit_messages_from_shared(
         strategy,
         base_ref=base_ref,
         fallback_ref="HEAD",
@@ -142,7 +142,7 @@ def cmd_release_gate(args: argparse.Namespace) -> None:
     changed_files: list[str] = []
     first_match: str | None = None
 
-    commits = load_commit_subjects(args.strategy, base_ref)
+    commits = load_commit_messages(args.strategy, base_ref)
     bump_type, should_publish = determine_bump_type(commits)
     reason_commit = find_bump_reason_commit(commits, bump_type)
 
@@ -150,14 +150,14 @@ def cmd_release_gate(args: argparse.Namespace) -> None:
     should_continue = should_publish
 
     print(
-        f"Release gate uses commit subjects only since {base_ref or 'repository start'}"
+        f"Release gate analyzed full commit messages since {base_ref or 'repository start'}"
     )
 
     if first_match:
         print(f"Matched eligible file: {first_match}")
 
     if commits:
-        print("Analyzed commit subjects:")
+        print("Analyzed commit messages:")
         for commit in commits:
             print(commit)
 

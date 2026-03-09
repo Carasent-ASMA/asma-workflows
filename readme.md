@@ -5,6 +5,7 @@ Centralized CI/CD workflows and scripts for ASMA project repositories.
 ## Purpose
 
 This repository provides:
+
 - **GitHub Actions workflows** - Reusable workflow templates for GitHub repos
 - **Bitbucket pipeline scripts** - Shell scripts for Bitbucket CI/CD operations
 
@@ -40,15 +41,27 @@ jobs:
 Build and publish npm packages with automatic versioning and tagging.
 
 **Inputs:**
+
 - `publish_npm` (boolean, default: true) - Whether to publish to npm registry
 - `package_name` (string) - Package name for logging
 
 **Features:**
+
 - Detects code changes since last tag
 - Builds TypeScript projects
 - Publishes to npm (if enabled)
 - Creates GitHub releases
 - Automatic version tagging
+
+### Squash Merge Policy
+
+For repositories using commit-message-based release detection:
+
+1. Enable `Allow squash merging` in GitHub repository settings.
+2. Set the squash default message to `Pull request title and commit details`.
+3. Keep the generated commit details when merging so `feat:`, `fix:`, and similar commit lines remain in the final squash commit body.
+
+This keeps release detection working for both squash merges and direct pushes to `master`.
 
 #### scaffold-doctor.yml
 
@@ -66,7 +79,7 @@ Located in `scripts/prBitbucketScripts/`, these scripts support Bitbucket CI/CD 
 
 ## Repository Structure
 
-```
+```text
 asma-workflows/
 ├── .github/
 │   └── workflows/              # GitHub Actions reusable workflows
@@ -96,7 +109,8 @@ All repositories using these workflows will receive updates automatically.
 ## References
 
 All ASMA shared libraries reference these workflows:
+
 - asma-core-helpers
 - asma-micro-app
 - asma-types
-- asma-ui-* libraries
+- asma-ui-\* libraries

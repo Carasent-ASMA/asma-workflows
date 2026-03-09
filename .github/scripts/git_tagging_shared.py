@@ -14,6 +14,7 @@ RELEASE_BRANCH_RE = re.compile(r"^(?:.+/)?(v\d+\.\d+\.\d+)$")
 BREAKING_CHANGE_RE = re.compile(r"^[a-z]+!(\([^)]*\))?:")
 FEATURE_RE = re.compile(r"^feat(\([^)]*\))?:")
 PATCH_RE = re.compile(r"^(fix|perf|style|refactor|chore)(\([^)]*\))?:")
+BULLET_PREFIX_RE = re.compile(r"^(?:[-*+]\s+|\d+\.\s+)+")
 
 ANALYSIS_STRATEGY_ALL_COMMITS = "all_commits_since_last_stable_tag"
 ANALYSIS_STRATEGY_LAST_COMMIT = "last_commit_only"
@@ -111,6 +112,33 @@ def parse_non_empty_lines(raw_text: str) -> list[str]:
     return [line.strip() for line in raw_text.splitlines() if line.strip()]
 
 
+def parse_non_empty_chunks(raw_text: str, delimiter: str = "\x00") -> list[str]:
+    """Return stripped non-empty chunks from a delimited command output."""
+    return [chunk.strip() for chunk in raw_text.split(delimiter) if chunk.strip()]
+
+
+def normalize_commit_message_line(line: str) -> str:
+    """Normalize a commit line so conventional commit prefixes can be detected."""
+    normalized_line = line.strip()
+    while normalized_line:
+        updated_line = BULLET_PREFIX_RE.sub("", normalized_line, count=1).strip()
+        if updated_line == normalized_line:
+            return normalized_line
+        normalized_line = updated_line
+    return ""
+
+
+def extract_commit_message_candidates(commits: list[str]) -> list[str]:
+    """Flatten commit messages into normalized candidate lines for analysis."""
+    candidates: list[str] = []
+    for commit in commits:
+        for line in commit.splitlines():
+            normalized_line = normalize_commit_message_line(line)
+            if normalized_line:
+                candidates.append(normalized_line)
+    return candidates
+
+
 def load_commit_subjects(
     strategy: str,
     *,
@@ -137,12 +165,34 @@ def load_commit_subjects(
     return parse_non_empty_lines(commits_raw)
 
 
+def load_commit_messages(
+    strategy: str,
+    *,
+    base_ref: str | None = None,
+    fallback_ref: str = "HEAD",
+) -> list[str]:
+    """Load full commit messages for release analysis."""
+    if strategy not in VALID_ANALYSIS_STRATEGIES:
+        raise RuntimeError(f"Unsupported analysis strategy: {strategy}")
+
+    if strategy == ANALYSIS_STRATEGY_LAST_COMMIT:
+        commits_raw = run_capture(["git", "log", "-1", "--format=%B%x00"], allow_fail=True)
+        return parse_non_empty_chunks(commits_raw)
+
+    history_ref = f"{base_ref}..HEAD" if base_ref else fallback_ref
+    commits_raw = run_capture(
+        ["git", "log", history_ref, "--format=%B%x00"],
+        allow_fail=True,
+    )
+    return parse_non_empty_chunks(commits_raw)
+
+
 def determine_bump_type(commits: list[str]) -> tuple[str, bool]:
     """Determine semantic bump severity from conventional commit subjects."""
     bump_type = "none"
     should_publish = False
 
-    for commit in commits:
+    for commit in extract_commit_message_candidates(commits):
         if BREAKING_CHANGE_RE.search(commit):
             bump_type = "major"
             should_publish = True
@@ -171,7 +221,7 @@ def find_bump_reason_commit(commits: list[str], bump_type: str) -> str | None:
     if matcher is None:
         return None
 
-    for commit in commits:
+    for commit in extract_commit_message_candidates(commits):
         if matcher.search(commit):
             return commit
     return None
