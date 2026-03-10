@@ -13,9 +13,7 @@ HOTPATCH_TAG_RE = re.compile(r"^v(\d+)\.(\d+)\.(\d+)-(\d+)$")
 RELEASE_BRANCH_RE = re.compile(r"^(?:.+/)?(v\d+\.\d+\.\d+)$")
 BREAKING_CHANGE_RE = re.compile(r"^[a-z]+!(\([^)]*\))?:")
 FEATURE_RE = re.compile(r"^feat(\([^)]*\))?:")
-PATCH_RE = re.compile(
-    r"^(fix|docs|style|refactor|hotfix|chore|revert|ci)(\([^)]*\))?:|^Merged |^Merge"
-)
+PATCH_RE = re.compile(r"^(fix|perf|style|refactor|chore)(\([^)]*\))?:")
 BULLET_PREFIX_RE = re.compile(r"^(?:[-*+]\s+|\d+\.\s+)+")
 
 ANALYSIS_STRATEGY_ALL_COMMITS = "all_commits_since_last_stable_tag"
