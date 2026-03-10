@@ -47,6 +47,37 @@ class ReleaseGateTests(unittest.TestCase):
                 self.assertEqual(bump_type, "patch")
                 self.assertTrue(should_publish)
 
+    def test_determine_bump_type_reads_squash_commit_details(self) -> None:
+        bump_type, should_publish = release_gate.determine_bump_type(
+            [
+                "Release login improvements (#42)\n\n"
+                "* fix: resolve token refresh\n"
+                "* feat: add silent login"
+            ]
+        )
+
+        self.assertEqual(bump_type, "minor")
+        self.assertTrue(should_publish)
+
+    def test_determine_bump_type_treats_docs_and_merge_commits_as_patch(self) -> None:
+        for commit in [
+            "docs: update release runbook",
+            "Merged in feature/asma-123 (pull request #44)",
+        ]:
+            with self.subTest(commit=commit):
+                bump_type, should_publish = release_gate.determine_bump_type([commit])
+
+                self.assertEqual(bump_type, "patch")
+                self.assertTrue(should_publish)
+
+    def test_determine_bump_type_treats_docs_breaking_change_as_major(self) -> None:
+        bump_type, should_publish = release_gate.determine_bump_type(
+            ["docs!: reset migration guide"]
+        )
+
+        self.assertEqual(bump_type, "major")
+        self.assertTrue(should_publish)
+
     def test_has_matching_changes_matches_regex_patterns(self) -> None:
         changed, first_match = release_gate.has_matching_changes(
             ["README.md", "src/index.ts"],
@@ -80,7 +111,7 @@ class ReleaseGateTests(unittest.TestCase):
         write_output_mock.assert_any_call("changed", "true")
         write_output_mock.assert_any_call("code_changed", "true")
 
-    def test_release_gate_stops_when_paths_do_not_match(self) -> None:
+    def test_release_gate_stops_when_no_release_commit_messages_exist(self) -> None:
         args = SimpleNamespace(
             base_ref="v1.0.0",
             patterns=[r"^src/"],
@@ -88,7 +119,9 @@ class ReleaseGateTests(unittest.TestCase):
         )
 
         with mock.patch.object(
-            release_gate, "list_changed_files", return_value=["README.md"]
+            release_gate,
+            "load_commit_messages",
+            return_value=["Update release docs"],
         ), mock.patch.object(release_gate, "write_output") as write_output_mock:
             release_gate.cmd_release_gate(args)
 
@@ -106,7 +139,7 @@ class ReleaseGateTests(unittest.TestCase):
         with mock.patch.object(
             release_gate, "list_changed_files", return_value=["src/index.ts"]
         ), mock.patch.object(
-            release_gate, "load_commit_subjects", return_value=["feat: add source"]
+            release_gate, "load_commit_messages", return_value=["feat: add source"]
         ), mock.patch.object(release_gate, "write_output") as write_output_mock:
             release_gate.cmd_release_gate(args)
 
@@ -115,6 +148,22 @@ class ReleaseGateTests(unittest.TestCase):
         write_output_mock.assert_any_call("bump_type", "minor")
         write_output_mock.assert_any_call("should_continue", "true")
 
+    def test_release_gate_writes_expected_summary_outputs(self) -> None:
+        args = SimpleNamespace(
+            base_ref="v1.0.0",
+            patterns=[r"^src/"],
+            strategy=release_gate.ANALYSIS_STRATEGY_ALL_COMMITS,
+        )
+
+        with mock.patch.object(
+            release_gate,
+            "load_commit_messages",
+            return_value=["docs: update release docs"],
+        ), mock.patch.object(release_gate, "write_output") as write_output_mock:
+            release_gate.cmd_release_gate(args)
+
+        write_output_mock.assert_any_call("bump_type", "patch")
+        write_output_mock.assert_any_call("should_continue", "true")
 
 class ReleaseGateGitRepoTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -174,7 +223,7 @@ class ReleaseGateGitRepoTests(unittest.TestCase):
 
         self.assertEqual(changed_files, ["README.md", "src/index.ts"])
 
-    def test_load_commit_subjects_without_tag_reads_full_history(self) -> None:
+    def test_load_commit_messages_without_tag_reads_full_history(self) -> None:
         src_dir = self.repo_path / "src"
         src_dir.mkdir()
         (src_dir / "index.ts").write_text("export const x = 1;\n", encoding="utf-8")
@@ -185,7 +234,7 @@ class ReleaseGateGitRepoTests(unittest.TestCase):
             check=True,
         )
 
-        commits = release_gate.load_commit_subjects(
+        commits = release_gate.load_commit_messages(
             release_gate.ANALYSIS_STRATEGY_ALL_COMMITS,
             None,
         )
