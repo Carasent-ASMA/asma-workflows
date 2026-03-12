@@ -1,6 +1,6 @@
 ---
-name: 'reusable-workflow-audit'
-description: 'Audit reusable GitHub Actions workflows for asma-infrastructure and asma-workflows. Use for requests about reusable workflow audits, workflow platform health, CI architecture, mutable refs, permissions, secrets versus vars, release gating, and workflow consistency.'
+name: "reusable-workflow-audit"
+description: "Audit reusable GitHub Actions workflows for asma-infrastructure and asma-workflows. Use for requests about reusable workflow audits, workflow platform health, CI architecture, mutable refs, permissions, secrets versus vars, release gating, and workflow consistency."
 ---
 
 # Reusable Workflow Audit Skill
