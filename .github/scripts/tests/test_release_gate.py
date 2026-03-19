@@ -5,6 +5,7 @@ import os
 import subprocess
 import tempfile
 import unittest
+from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
 from types import ModuleType
@@ -27,6 +28,23 @@ release_gate = load_module()
 
 
 class ReleaseGateTests(unittest.TestCase):
+    def test_style_text_returns_plain_text_when_color_disabled(self) -> None:
+        with mock.patch.object(release_gate, "supports_color_output", return_value=False):
+            styled = release_gate.style_text("hello", color=release_gate.ANSI_GREEN)
+
+        self.assertEqual(styled, "hello")
+
+    def test_print_commit_lines_emphasizes_subject_and_body(self) -> None:
+        output = StringIO()
+        with (
+            mock.patch.object(release_gate, "supports_color_output", return_value=False),
+            mock.patch("sys.stdout", new=output),
+        ):
+            release_gate.print_commit_lines(["feat: ship colors\n\nbody line"])
+
+        self.assertIn("◆ feat: ship colors", output.getvalue())
+        self.assertIn("body line", output.getvalue())
+
     def test_determine_bump_type_prefers_highest_severity(self) -> None:
         bump_type, should_publish = release_gate.determine_bump_type(
             ["fix: patch", "feat: feature", "refactor!: breaking"]

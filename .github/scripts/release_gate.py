@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import os
 import re
 import sys
 from pathlib import Path
@@ -74,6 +75,73 @@ parse_non_empty_lines = _SHARED.parse_non_empty_lines
 run_capture = _SHARED.run_capture
 write_output = _SHARED.write_output
 
+ANSI_RESET = "\033[0m"
+ANSI_BOLD = "\033[1m"
+ANSI_DIM = "\033[2m"
+ANSI_RED = "\033[31m"
+ANSI_GREEN = "\033[32m"
+ANSI_YELLOW = "\033[33m"
+ANSI_BLUE = "\033[34m"
+ANSI_MAGENTA = "\033[35m"
+ANSI_CYAN = "\033[36m"
+
+
+def supports_color_output() -> bool:
+    """Return whether ANSI color output should be emitted."""
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        return True
+    return sys.stdout.isatty()
+
+
+def style_text(
+    text: str,
+    *,
+    color: str | None = None,
+    bold: bool = False,
+    dim: bool = False,
+) -> str:
+    """Apply ANSI styling when the current output supports it."""
+    if not supports_color_output():
+        return text
+
+    codes: list[str] = []
+    if bold:
+        codes.append(ANSI_BOLD)
+    if dim:
+        codes.append(ANSI_DIM)
+    if color:
+        codes.append(color)
+    if not codes:
+        return text
+    return f"{''.join(codes)}{text}{ANSI_RESET}"
+
+
+def print_status_line(icon: str, message: str, *, color: str | None = None) -> None:
+    """Print a styled one-line status message."""
+    styled_icon = style_text(icon, color=color, bold=True)
+    styled_message = style_text(message, color=color)
+    print(f"{styled_icon} {styled_message}")
+
+
+def print_section(title: str, *, icon: str = "ℹ", color: str = ANSI_CYAN) -> None:
+    """Print a styled section heading."""
+    print_status_line(icon, title, color=color)
+
+
+def print_commit_lines(commits: list[str]) -> None:
+    """Print analyzed commit messages with emphasis on subject lines."""
+    for commit in commits:
+        lines = commit.splitlines() or [commit]
+        subject = lines[0]
+        print(
+            f"  {style_text('◆', color=ANSI_MAGENTA, bold=True)} "
+            f"{style_text(subject, color=ANSI_YELLOW, bold=True)}"
+        )
+        for detail_line in lines[1:]:
+            print(f"    {style_text(detail_line, color=ANSI_BLUE, dim=True)}")
+
 
 def list_changed_files(base_ref: str | None) -> list[str]:
     """List changed files between a base ref and HEAD.
@@ -119,12 +187,20 @@ def cmd_check_path_changes(args: argparse.Namespace) -> None:
     changed_files = list_changed_files(base_ref)
     has_changes, first_match = has_matching_changes(changed_files, args.patterns)
 
-    print(f"Changed files since {base_ref or 'repository start'}:")
+    print_section(
+        f"Changed files since {base_ref or 'repository start'}",
+        icon="📁",
+        color=ANSI_CYAN,
+    )
     for file_path in changed_files:
-        print(file_path)
+        print(f"  {style_text('•', color=ANSI_BLUE, bold=True)} {file_path}")
 
     if first_match:
-        print(f"Matched eligible file: {first_match}")
+        print_status_line(
+            "🎯",
+            f"Matched eligible file: {first_match}",
+            color=ANSI_GREEN,
+        )
 
     write_output("base_ref", base_ref or "")
     write_output("changed", "true" if has_changes else "false")
@@ -132,9 +208,13 @@ def cmd_check_path_changes(args: argparse.Namespace) -> None:
     write_output("changed_files", "\n".join(changed_files))
 
     if has_changes:
-        print("✅ Eligible file changes detected")
+        print_status_line("✅", "Eligible file changes detected", color=ANSI_GREEN)
     else:
-        print("⏭️  No eligible file changes detected")
+        print_status_line(
+            "⏭️",
+            "No eligible file changes detected",
+            color=ANSI_YELLOW,
+        )
 
 
 def cmd_release_gate(args: argparse.Namespace) -> None:
@@ -161,24 +241,38 @@ def cmd_release_gate(args: argparse.Namespace) -> None:
     code_changed = should_publish
     should_continue = should_publish
 
-    print(
-        f"Release gate analyzed full commit messages since {base_ref or 'repository start'}"
+    print_section(
+        f"Release gate analyzed full commit messages since {base_ref or 'repository start'}",
+        icon="🔎",
+        color=ANSI_CYAN,
     )
 
     if first_match:
-        print(f"Matched eligible file: {first_match}")
+        print_status_line(
+            "🎯",
+            f"Matched eligible file: {first_match}",
+            color=ANSI_GREEN,
+        )
 
     if commits:
-        print("Analyzed commit messages:")
-        for commit in commits:
-            print(commit)
+        print_section("Analyzed commit messages", icon="🧾", color=ANSI_BLUE)
+        print_commit_lines(commits)
 
     if reason_commit:
-        print(f"Matched release commit: {reason_commit}")
+        print_status_line(
+            "🚀",
+            f"Matched release commit: {reason_commit}",
+            color=ANSI_MAGENTA,
+        )
 
     if forced_release:
-        print(
-            f"Release gate override active via {FORCE_RELEASE_MARKER}; continuing with {bump_type} release"
+        print_status_line(
+            "🧨",
+            (
+                f"Release gate override active via {FORCE_RELEASE_MARKER}; "
+                f"continuing with {bump_type} release"
+            ),
+            color=ANSI_YELLOW,
         )
 
     write_output("base_ref", base_ref or "")
@@ -193,14 +287,26 @@ def cmd_release_gate(args: argparse.Namespace) -> None:
         write_output("reason_commit", reason_commit)
 
     if should_continue:
-        print(f"✅ Continue workflow with {bump_type} release")
+        print_status_line(
+            "✅",
+            f"Continue workflow with {bump_type} release",
+            color=ANSI_GREEN,
+        )
         return
 
     if not commits:
-        print("⏭️  Stop early: no commits found for release analysis")
+        print_status_line(
+            "⏭️",
+            "Stop early: no commits found for release analysis",
+            color=ANSI_YELLOW,
+        )
         return
 
-    print("⏭️  Stop early: no release-worthy commit messages found")
+    print_status_line(
+        "⏭️",
+        "Stop early: no release-worthy commit messages found",
+        color=ANSI_RED,
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
