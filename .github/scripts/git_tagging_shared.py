@@ -14,7 +14,10 @@ RELEASE_BRANCH_RE = re.compile(r"^(?:.+/)?(v\d+\.\d+\.\d+)$")
 BREAKING_CHANGE_RE = re.compile(r"^[a-z]+!(\([^)]*\))?:")
 FEATURE_RE = re.compile(r"^feat(\([^)]*\))?:")
 PATCH_RE = re.compile(r"^(fix|perf|style|refactor|chore)(\([^)]*\))?:")
+DOCS_RE = re.compile(r"^docs(\([^)]*\))?:")
+MERGE_PR_RE = re.compile(r"^merged in .+\(pull request #[0-9]+\)$", re.IGNORECASE)
 BULLET_PREFIX_RE = re.compile(r"^(?:[-*+]\s+|\d+\.\s+)+")
+FORCE_RELEASE_MARKER_RE = re.compile(r"(^|\s)--force-release(?:\s|$)")
 
 ANALYSIS_STRATEGY_ALL_COMMITS = "all_commits_since_last_stable_tag"
 ANALYSIS_STRATEGY_LAST_COMMIT = "last_commit_only"
@@ -22,6 +25,7 @@ VALID_ANALYSIS_STRATEGIES = {
     ANALYSIS_STRATEGY_ALL_COMMITS,
     ANALYSIS_STRATEGY_LAST_COMMIT,
 }
+FORCE_RELEASE_MARKER = "--force-release"
 
 
 def run_capture(
@@ -206,6 +210,16 @@ def determine_bump_type(commits: list[str]) -> tuple[str, bool]:
         if bump_type not in {"major", "minor"} and PATCH_RE.search(commit):
             bump_type = "patch"
             should_publish = True
+            continue
+
+        if bump_type not in {"major", "minor"} and DOCS_RE.search(commit):
+            bump_type = "patch"
+            should_publish = True
+            continue
+
+        if bump_type not in {"major", "minor"} and MERGE_PR_RE.search(commit):
+            bump_type = "patch"
+            should_publish = True
 
     return bump_type, should_publish
 
@@ -215,7 +229,16 @@ def find_bump_reason_commit(commits: list[str], bump_type: str) -> str | None:
     matcher_by_bump_type = {
         "major": BREAKING_CHANGE_RE,
         "minor": FEATURE_RE,
-        "patch": PATCH_RE,
+        "patch": re.compile(
+            "|".join(
+                [
+                    PATCH_RE.pattern,
+                    DOCS_RE.pattern,
+                    MERGE_PR_RE.pattern,
+                ]
+            ),
+            re.IGNORECASE,
+        ),
     }
     matcher = matcher_by_bump_type.get(bump_type)
     if matcher is None:
@@ -223,6 +246,19 @@ def find_bump_reason_commit(commits: list[str], bump_type: str) -> str | None:
 
     for commit in extract_commit_message_candidates(commits):
         if matcher.search(commit):
+            return commit
+    return None
+
+
+def has_forced_release_marker(commits: list[str]) -> bool:
+    """Return whether any analyzed commit message requests a forced release."""
+    return find_forced_release_reason_commit(commits) is not None
+
+
+def find_forced_release_reason_commit(commits: list[str]) -> str | None:
+    """Return the first normalized commit line containing the force marker."""
+    for commit in extract_commit_message_candidates(commits):
+        if FORCE_RELEASE_MARKER_RE.search(commit):
             return commit
     return None
 

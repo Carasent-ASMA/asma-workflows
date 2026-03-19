@@ -25,11 +25,16 @@ def _load_shared_module() -> ModuleType:
 class GitTaggingSharedProtocol(Protocol):
     ANALYSIS_STRATEGY_ALL_COMMITS: str
     ANALYSIS_STRATEGY_LAST_COMMIT: str
+    FORCE_RELEASE_MARKER: str
     VALID_ANALYSIS_STRATEGIES: set[str]
 
     def determine_bump_type(self, commits: list[str]) -> tuple[str, bool]: ...
 
     def find_bump_reason_commit(self, commits: list[str], bump_type: str) -> str | None: ...
+
+    def has_forced_release_marker(self, commits: list[str]) -> bool: ...
+
+    def find_forced_release_reason_commit(self, commits: list[str]) -> str | None: ...
 
     def get_latest_stable_tag(self, merged_only: bool = False) -> str | None: ...
 
@@ -57,10 +62,13 @@ _SHARED = cast(GitTaggingSharedProtocol, _load_shared_module())
 
 ANALYSIS_STRATEGY_ALL_COMMITS: str = _SHARED.ANALYSIS_STRATEGY_ALL_COMMITS
 ANALYSIS_STRATEGY_LAST_COMMIT: str = _SHARED.ANALYSIS_STRATEGY_LAST_COMMIT
+FORCE_RELEASE_MARKER: str = _SHARED.FORCE_RELEASE_MARKER
 VALID_ANALYSIS_STRATEGIES: set[str] = _SHARED.VALID_ANALYSIS_STRATEGIES
 determine_bump_type = _SHARED.determine_bump_type
 find_bump_reason_commit = _SHARED.find_bump_reason_commit
+find_forced_release_reason_commit = _SHARED.find_forced_release_reason_commit
 get_latest_stable_tag = _SHARED.get_latest_stable_tag
+has_forced_release_marker = _SHARED.has_forced_release_marker
 load_commit_messages_from_shared = _SHARED.load_commit_messages
 parse_non_empty_lines = _SHARED.parse_non_empty_lines
 run_capture = _SHARED.run_capture
@@ -142,7 +150,13 @@ def cmd_release_gate(args: argparse.Namespace) -> None:
 
     commits = load_commit_messages(args.strategy, base_ref)
     bump_type, should_publish = determine_bump_type(commits)
+    forced_release = has_forced_release_marker(commits)
     reason_commit = find_bump_reason_commit(commits, bump_type)
+
+    if forced_release and not should_publish:
+        bump_type = "patch"
+        should_publish = True
+        reason_commit = find_forced_release_reason_commit(commits)
 
     code_changed = should_publish
     should_continue = should_publish
@@ -161,6 +175,11 @@ def cmd_release_gate(args: argparse.Namespace) -> None:
 
     if reason_commit:
         print(f"Matched release commit: {reason_commit}")
+
+    if forced_release:
+        print(
+            f"Release gate override active via {FORCE_RELEASE_MARKER}; continuing with {bump_type} release"
+        )
 
     write_output("base_ref", base_ref or "")
     write_output("changed", "true" if code_changed else "false")

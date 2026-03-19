@@ -148,6 +148,27 @@ class ReleaseGateTests(unittest.TestCase):
         write_output_mock.assert_any_call("bump_type", "minor")
         write_output_mock.assert_any_call("should_continue", "true")
 
+    def test_release_gate_force_release_marker_bypasses_commit_prefix_checks(
+        self,
+    ) -> None:
+        args = SimpleNamespace(
+            base_ref="v1.0.0",
+            patterns=[r"^src/"],
+            strategy=release_gate.ANALYSIS_STRATEGY_ALL_COMMITS,
+        )
+
+        with mock.patch.object(
+            release_gate,
+            "load_commit_messages",
+            return_value=["release ui icons --force-release"],
+        ), mock.patch.object(release_gate, "write_output") as write_output_mock:
+            release_gate.cmd_release_gate(args)
+
+        write_output_mock.assert_any_call("code_changed", "true")
+        write_output_mock.assert_any_call("should_publish", "true")
+        write_output_mock.assert_any_call("bump_type", "patch")
+        write_output_mock.assert_any_call("should_continue", "true")
+
     def test_release_gate_writes_expected_summary_outputs(self) -> None:
         args = SimpleNamespace(
             base_ref="v1.0.0",
