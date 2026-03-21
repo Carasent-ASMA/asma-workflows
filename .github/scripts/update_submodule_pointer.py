@@ -3,9 +3,14 @@ from __future__ import annotations
 
 import argparse
 import configparser
+import json
 import os
+import re
 import subprocess
 import tempfile
+from typing import cast
+from urllib import parse, request
+from urllib.error import HTTPError
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -50,15 +55,45 @@ class PointerUpdateResult:
     submodule_path: str | None
     target_sha: str | None
     message: str
+    branch_name: str | None = None
+    pr_number: str | None = None
+    pr_url: str | None = None
 
     @property
     def updated(self) -> bool:
         """Return whether the pointer was updated in asma-modules."""
-        return self.status == "updated"
+        return self.status in {"updated", "already-open"}
+
+
+@dataclass(frozen=True)
+class PullRequestInfo:
+    """Represent a GitHub pull request used for pointer updates."""
+
+    number: int
+    node_id: str
+    url: str
+    head_ref: str
 
 
 class GitCommandError(RuntimeError):
     """Raise when a git command fails."""
+
+
+GITHUB_API_BASE_URL = "https://api.github.com"
+GRAPHQL_AUTOMERGE_MUTATION = """
+mutation EnablePointerAutoMerge($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod!) {
+    enablePullRequestAutoMerge(
+        input: {
+            pullRequestId: $pullRequestId
+            mergeMethod: $mergeMethod
+        }
+    ) {
+        pullRequest {
+            number
+        }
+    }
+}
+""".strip()
 
 
 def run_git(
@@ -196,6 +231,17 @@ def build_github_remote_url(repository: str, token: str) -> str:
     return f"https://x-access-token:{token}@github.com/{repository}.git"
 
 
+def sanitize_branch_component(value: str) -> str:
+    """Normalize a branch-name component for bot-generated pointer branches."""
+    normalized = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    return normalized or "submodule"
+
+
+def build_pointer_branch_name(submodule_path: str, target_sha: str) -> str:
+    """Build a deterministic branch name for a pointer update."""
+    return f"bot/pointer/{sanitize_branch_component(submodule_path)}-{target_sha[:12]}"
+
+
 def clone_repository(remote_url: str, branch_name: str, destination: Path) -> Path:
     """Clone the target repository at the requested branch."""
     repo_path = destination / "repo"
@@ -237,6 +283,11 @@ def configure_commit_identity(repo_path: Path, user_name: str, user_email: str) 
     run_git(["git", "config", "user.email", user_email], cwd=repo_path)
 
 
+def checkout_pointer_branch(repo_path: Path, branch_name: str) -> None:
+    """Create a fresh local branch for the pointer update commit."""
+    run_git(["git", "checkout", "-b", branch_name], cwd=repo_path)
+
+
 def create_pointer_commit(repo_path: Path, submodule_path: str, target_sha: str) -> None:
     """Stage and commit a gitlink update for the resolved submodule path."""
     run_git(
@@ -257,12 +308,170 @@ def create_pointer_commit(repo_path: Path, submodule_path: str, target_sha: str)
 
 
 def push_pointer_commit(repo_path: Path, branch_name: str) -> subprocess.CompletedProcess[str]:
-    """Push the current HEAD directly to the target branch."""
+    """Push the current HEAD to a deterministic bot branch."""
     return run_git(
-        ["git", "push", "origin", f"HEAD:{branch_name}"],
+        ["git", "push", "--force", "origin", f"HEAD:{branch_name}"],
         cwd=repo_path,
         check=False,
     )
+
+
+def github_request(
+    method: str,
+    url: str,
+    token: str,
+    payload: dict[str, object] | None = None,
+) -> object:
+    """Call the GitHub REST or GraphQL API using the provided token."""
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "asma-pointer-updater",
+    }
+    body = None
+    if payload is not None:
+        body = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+
+    api_request = request.Request(url, data=body, headers=headers, method=method)
+    try:
+        with request.urlopen(api_request) as response:
+            content = response.read().decode("utf-8")
+    except HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"GitHub API request failed ({exc.code} {exc.reason}): {error_body}"
+        ) from exc
+
+    if not content:
+        return {}
+    return json.loads(content)
+
+
+def parse_pull_request_info(payload: dict[str, object]) -> PullRequestInfo:
+    """Build a typed pull request record from a GitHub API payload."""
+    number = payload.get("number")
+    node_id = payload.get("node_id")
+    html_url = payload.get("html_url")
+    head = payload.get("head")
+    if not isinstance(number, int):
+        raise RuntimeError(f"GitHub PR payload missing integer number: {payload}")
+    if not isinstance(node_id, str) or not node_id:
+        raise RuntimeError(f"GitHub PR payload missing node_id: {payload}")
+    if not isinstance(html_url, str) or not html_url:
+        raise RuntimeError(f"GitHub PR payload missing html_url: {payload}")
+    if not isinstance(head, dict):
+        raise RuntimeError(f"GitHub PR payload missing head ref: {payload}")
+    head_ref = head.get("ref")
+    if not isinstance(head_ref, str) or not head_ref:
+        raise RuntimeError(f"GitHub PR payload missing head ref string: {payload}")
+    return PullRequestInfo(
+        number=number,
+        node_id=node_id,
+        url=html_url,
+        head_ref=head_ref,
+    )
+
+
+def find_open_pointer_pull_request(
+    repository: str,
+    branch_name: str,
+    base_branch: str,
+    token: str,
+) -> PullRequestInfo | None:
+    """Return an existing open pointer PR for the deterministic branch if one exists."""
+    coordinates = parse_repo_coordinates(repository)
+    if coordinates is None:
+        raise RuntimeError(f"Unsupported repository value for PR lookup: {repository}")
+    head_ref = parse.quote(f"{coordinates.owner}:{branch_name}", safe=":")
+    base_ref = parse.quote(base_branch, safe="")
+    response = github_request(
+        "GET",
+        f"{GITHUB_API_BASE_URL}/repos/{repository}/pulls?state=open&head={head_ref}&base={base_ref}",
+        token,
+    )
+    if not isinstance(response, list):
+        raise RuntimeError(f"Unexpected GitHub PR list payload: {response}")
+    if not response:
+        return None
+    first_item = response[0]
+    if not isinstance(first_item, dict):
+        raise RuntimeError(f"Unexpected GitHub PR item payload: {first_item}")
+    return parse_pull_request_info(cast(dict[str, object], first_item))
+
+
+def create_pointer_pull_request(
+    repository: str,
+    branch_name: str,
+    base_branch: str,
+    submodule_path: str,
+    target_sha: str,
+    caller_repository: str,
+    token: str,
+) -> PullRequestInfo:
+    """Create a pointer PR or reuse an existing open PR for the deterministic branch."""
+    title = f"chore(pointer): advance {submodule_path} to {target_sha[:12]}"
+    body = (
+        "Automated pointer update generated by the shared submodule updater.\n\n"
+        f"- submodule path: {submodule_path}\n"
+        f"- source repository: {caller_repository}\n"
+        f"- source sha: {target_sha}\n"
+        f"- target branch: {base_branch}\n"
+    )
+    try:
+        response = github_request(
+            "POST",
+            f"{GITHUB_API_BASE_URL}/repos/{repository}/pulls",
+            token,
+            {
+                "title": title,
+                "head": branch_name,
+                "base": base_branch,
+                "body": body,
+                "maintainer_can_modify": False,
+            },
+        )
+        if not isinstance(response, dict):
+            raise RuntimeError(f"Unexpected GitHub create PR payload: {response}")
+        return parse_pull_request_info(cast(dict[str, object], response))
+    except RuntimeError as exc:
+        if "A pull request already exists" not in str(exc):
+            raise
+    existing = find_open_pointer_pull_request(repository, branch_name, base_branch, token)
+    if existing is None:
+        raise RuntimeError(
+            f"Pointer PR already exists for branch {branch_name}, but it could not be resolved"
+        )
+    return existing
+
+
+def enable_pull_request_auto_merge(
+    pull_request: PullRequestInfo,
+    token: str,
+    merge_method: str,
+) -> None:
+    """Enable auto-merge for the pointer PR using GitHub GraphQL."""
+    response = github_request(
+        "POST",
+        f"{GITHUB_API_BASE_URL}/graphql",
+        token,
+        {
+            "query": GRAPHQL_AUTOMERGE_MUTATION,
+            "variables": {
+                "pullRequestId": pull_request.node_id,
+                "mergeMethod": merge_method.upper(),
+            },
+        },
+    )
+    if not isinstance(response, dict):
+        raise RuntimeError(f"Unexpected GitHub GraphQL payload: {response}")
+    errors = response.get("errors")
+    if not isinstance(errors, list) or not errors:
+        return
+    messages = [error.get("message", "unknown GraphQL error") for error in errors if isinstance(error, dict)]
+    combined = "; ".join(message for message in messages if isinstance(message, str))
+    raise RuntimeError(f"Failed to enable auto-merge for PR #{pull_request.number}: {combined}")
 
 
 def update_pointer_for_latest_master(
@@ -280,8 +489,9 @@ def update_pointer_for_latest_master(
     fail_if_unmapped: bool,
     git_user_name: str,
     git_user_email: str,
+    auto_merge_method: str,
 ) -> PointerUpdateResult:
-    """Update the asma-modules pointer when the caller SHA is the latest master SHA."""
+    """Open or refresh a pointer PR when the caller SHA is the latest master SHA."""
     if caller_ref_name != expected_branch:
         return PointerUpdateResult(
             status="skipped-non-target-branch",
@@ -363,33 +573,54 @@ def update_pointer_for_latest_master(
                 ),
             )
 
+        if asma_modules_repository is None or asma_modules_token is None:
+            raise RuntimeError(
+                "Target repository slug and token are required for pointer PR creation"
+            )
+
+        branch_name = build_pointer_branch_name(submodule_path, caller_sha)
+        checkout_pointer_branch(asma_repo_path, branch_name)
         create_pointer_commit(asma_repo_path, submodule_path, caller_sha)
-        push_result = push_pointer_commit(asma_repo_path, asma_modules_branch)
-        if push_result.returncode == 0:
-            return PointerUpdateResult(
-                status="updated",
-                submodule_path=submodule_path,
-                target_sha=caller_sha,
-                message=f"Updated {submodule_path} to {caller_sha}",
+        push_result = push_pointer_commit(asma_repo_path, branch_name)
+        if push_result.returncode != 0:
+            raise RuntimeError(
+                "Failed to push pointer branch to asma-modules: "
+                + (push_result.stderr.strip() or push_result.stdout.strip())
             )
 
-        run_git(["git", "fetch", "origin", asma_modules_branch], cwd=asma_repo_path)
-        run_git(
-            ["git", "reset", "--hard", f"origin/{asma_modules_branch}"],
-            cwd=asma_repo_path,
+        pull_request = find_open_pointer_pull_request(
+            asma_modules_repository,
+            branch_name,
+            asma_modules_branch,
+            asma_modules_token,
         )
-        current_pointer_sha = read_gitlink_sha(asma_repo_path, submodule_path)
-        if current_pointer_sha == caller_sha:
-            return PointerUpdateResult(
-                status="skipped-pointer-current",
-                submodule_path=submodule_path,
-                target_sha=caller_sha,
-                message=f"Pointer already updated to {caller_sha}",
+        if pull_request is None:
+            pull_request = create_pointer_pull_request(
+                asma_modules_repository,
+                branch_name,
+                asma_modules_branch,
+                submodule_path,
+                caller_sha,
+                caller_repository,
+                asma_modules_token,
             )
 
-        raise RuntimeError(
-            "Failed to push pointer update to asma-modules/master: "
-            + (push_result.stderr.strip() or push_result.stdout.strip())
+        enable_pull_request_auto_merge(
+            pull_request,
+            asma_modules_token,
+            auto_merge_method,
+        )
+        return PointerUpdateResult(
+            status="updated",
+            submodule_path=submodule_path,
+            target_sha=caller_sha,
+            message=(
+                f"Opened or refreshed pointer PR #{pull_request.number} for {submodule_path} "
+                f"to {caller_sha[:12]} with auto-merge enabled"
+            ),
+            branch_name=branch_name,
+            pr_number=str(pull_request.number),
+            pr_url=pull_request.url,
         )
 
 
@@ -406,6 +637,7 @@ def build_parser() -> argparse.ArgumentParser:
     update_parser.add_argument("--expected-branch", default="master")
     update_parser.add_argument("--asma-modules-repository", default="Carasent-ASMA/asma-modules")
     update_parser.add_argument("--asma-modules-branch", default="master")
+    update_parser.add_argument("--auto-merge-method", default="squash")
     update_parser.add_argument("--submodule-path", default="")
     update_parser.add_argument("--git-user-name", default="github-actions[bot]")
     update_parser.add_argument(
@@ -436,6 +668,7 @@ def cmd_update_pointer(args: argparse.Namespace) -> int:
         fail_if_unmapped=args.fail_if_unmapped == "true",
         git_user_name=args.git_user_name,
         git_user_email=args.git_user_email,
+        auto_merge_method=args.auto_merge_method,
     )
 
     print(result.message)
@@ -443,6 +676,9 @@ def cmd_update_pointer(args: argparse.Namespace) -> int:
     write_output("updated", "true" if result.updated else "false")
     write_output("submodule_path", result.submodule_path or "")
     write_output("target_sha", result.target_sha or "")
+    write_output("branch_name", result.branch_name or "")
+    write_output("pr_number", result.pr_number or "")
+    write_output("pr_url", result.pr_url or "")
     return 0
 
 

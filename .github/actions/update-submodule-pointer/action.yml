@@ -14,6 +14,15 @@ outputs:
   target_sha:
     description: Caller SHA evaluated by the pointer updater.
     value: ${{ steps.update_pointer.outputs.target_sha }}
+  branch_name:
+    description: Deterministic branch created or refreshed in asma-modules.
+    value: ${{ steps.update_pointer.outputs.branch_name }}
+  pr_number:
+    description: Pull request number created or reused for the pointer update.
+    value: ${{ steps.update_pointer.outputs.pr_number }}
+  pr_url:
+    description: Pull request URL created or reused for the pointer update.
+    value: ${{ steps.update_pointer.outputs.pr_url }}
 
 inputs:
   github-app-id:
@@ -53,6 +62,10 @@ inputs:
     description: Target branch that stores authoritative submodule pointers.
     required: false
     default: master
+  auto-merge-method:
+    description: Merge method to enable when auto-merge is turned on for the pointer PR.
+    required: false
+    default: squash
   submodule-path:
     description: Optional explicit asma-modules submodule path override.
     required: false
@@ -106,6 +119,7 @@ runs:
           --expected-branch "${{ inputs.expected-branch }}" \
           --asma-modules-repository "${{ inputs.asma-modules-repository }}" \
           --asma-modules-branch "${{ inputs.asma-modules-branch }}" \
+          --auto-merge-method "${{ inputs.auto-merge-method }}" \
           --submodule-path "${{ inputs.submodule-path }}" \
           --fail-if-unmapped "${{ inputs.fail-if-unmapped }}" \
           --git-user-name "${{ inputs.git-user-name }}" \

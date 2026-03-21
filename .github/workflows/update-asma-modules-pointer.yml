@@ -1,0 +1,29 @@
+name: Update asma-modules Pointer
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  update_pointer:
+    name: Update Pointer
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Update asma-modules pointer
+        uses: ./.github/actions/update-submodule-pointer
+        with:
+          github-app-id: ${{ secrets.ARGOCD_APP_ID }}
+          github-app-private-key: ${{ secrets.ARGOCD_APP_PRIVATE_KEY }}
+          caller-repository: ${{ github.repository }}
+          caller-sha: ${{ github.sha }}
+          caller-ref-name: ${{ github.ref_name }}

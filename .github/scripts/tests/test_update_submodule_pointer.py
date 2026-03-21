@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import ModuleType
+from unittest.mock import Mock, patch
 
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1]
@@ -152,16 +153,27 @@ class UpdateSubmodulePointerTests(unittest.TestCase):
                 caller_ref_name="master",
                 expected_branch="master",
                 asma_modules_remote_url=str(asma_remote),
+                asma_modules_repository="Carasent-ASMA/asma-modules",
+                asma_modules_token="token",
                 asma_modules_branch="master",
                 explicit_submodule_path=None,
                 fail_if_unmapped=True,
                 git_user_name="Test User",
                 git_user_email="test@example.com",
+                auto_merge_method="squash",
             )
 
             self.assertEqual(result.status, "skipped-not-latest-master")
 
-    def test_update_pointer_commits_latest_master_sha(self) -> None:
+    @patch.object(update_submodule_pointer, "enable_pull_request_auto_merge")
+    @patch.object(update_submodule_pointer, "find_open_pointer_pull_request")
+    @patch.object(update_submodule_pointer, "create_pointer_pull_request")
+    def test_update_pointer_opens_pull_request_for_latest_master_sha(
+        self,
+        mock_create_pr: Mock,
+        mock_find_pr: Mock,
+        mock_enable_auto_merge: Mock,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             caller_remote = root / "caller-remote.git"
@@ -232,39 +244,145 @@ class UpdateSubmodulePointerTests(unittest.TestCase):
             )
             subprocess.run(["git", "push", "-u", "origin", "master"], cwd=asma_repo, check=True)
 
+            mock_find_pr.return_value = None
+            mock_create_pr.return_value = update_submodule_pointer.PullRequestInfo(
+                number=42,
+                node_id="PR_kwDOAAABBB4",
+                url="https://github.com/Carasent-ASMA/asma-modules/pull/42",
+                head_ref="bot/pointer/shared-asma-core-helpers",
+            )
+
             result = update_submodule_pointer.update_pointer_for_latest_master(
                 caller_repo_path=caller_repo,
                 caller_repository="Carasent-ASMA/asma-core-helpers",
                 caller_sha=latest_sha,
                 caller_ref_name="master",
                 expected_branch="master",
+                asma_modules_repository="Carasent-ASMA/asma-modules",
+                asma_modules_token="token",
                 asma_modules_remote_url=str(asma_remote),
                 asma_modules_branch="master",
                 explicit_submodule_path=None,
                 fail_if_unmapped=True,
                 git_user_name="Test User",
                 git_user_email="test@example.com",
+                auto_merge_method="squash",
             )
 
             self.assertEqual(result.status, "updated")
+            self.assertEqual(result.pr_number, "42")
+            self.assertEqual(
+                result.pr_url,
+                "https://github.com/Carasent-ASMA/asma-modules/pull/42",
+            )
+            mock_create_pr.assert_called_once()
+            mock_enable_auto_merge.assert_called_once()
 
             verification_repo = root / "verify"
             subprocess.run(
                 [
                     "git",
                     "clone",
-                    "--branch",
-                    "master",
                     str(asma_remote),
                     str(verification_repo),
                 ],
                 check=True,
             )
+            branch_name = update_submodule_pointer.build_pointer_branch_name(
+                "shared/asma-core-helpers",
+                latest_sha,
+            )
+            run_git(["git", "checkout", branch_name], verification_repo)
             pointer_sha = run_git(
                 ["git", "ls-tree", "HEAD", "shared/asma-core-helpers"],
                 verification_repo,
             ).split()[2]
             self.assertEqual(pointer_sha, latest_sha)
+
+    @patch.object(update_submodule_pointer, "enable_pull_request_auto_merge")
+    @patch.object(update_submodule_pointer, "find_open_pointer_pull_request")
+    @patch.object(update_submodule_pointer, "create_pointer_pull_request")
+    def test_update_pointer_reuses_existing_open_pull_request(
+        self,
+        mock_create_pr: Mock,
+        mock_find_pr: Mock,
+        mock_enable_auto_merge: Mock,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            caller_remote = root / "caller-remote.git"
+            caller_remote.mkdir()
+            subprocess.run(["git", "init", "--bare"], cwd=caller_remote, check=True)
+
+            caller_repo = root / "caller"
+            caller_repo.mkdir()
+            init_repo(caller_repo)
+            (caller_repo / "README.md").write_text("one\n", encoding="utf-8")
+            subprocess.run(["git", "add", "README.md"], cwd=caller_repo, check=True)
+            subprocess.run(["git", "commit", "-m", "feat: latest change"], cwd=caller_repo, check=True)
+            subprocess.run(["git", "remote", "add", "origin", str(caller_remote)], cwd=caller_repo, check=True)
+            subprocess.run(["git", "push", "-u", "origin", "master"], cwd=caller_repo, check=True)
+            latest_sha = run_git(["git", "rev-parse", "HEAD"], caller_repo)
+
+            asma_remote = root / "asma-modules-remote.git"
+            asma_remote.mkdir()
+            subprocess.run(["git", "init", "--bare"], cwd=asma_remote, check=True)
+
+            asma_repo = root / "asma-modules"
+            asma_repo.mkdir()
+            init_repo(asma_repo)
+            (asma_repo / ".gitmodules").write_text(
+                '[submodule "shared/asma-core-helpers"]\n'
+                'path = shared/asma-core-helpers\n'
+                'url = git@github.com:Carasent-ASMA/asma-core-helpers.git\n',
+                encoding="utf-8",
+            )
+            subprocess.run(["git", "add", ".gitmodules"], cwd=asma_repo, check=True)
+            subprocess.run(
+                [
+                    "git",
+                    "update-index",
+                    "--add",
+                    "--cacheinfo",
+                    f"160000,{latest_sha[:-1] + ('0' if latest_sha[-1] != '0' else '1')},shared/asma-core-helpers",
+                ],
+                cwd=asma_repo,
+                check=True,
+            )
+            subprocess.run(["git", "commit", "-m", "chore: initial pointer"], cwd=asma_repo, check=True)
+            subprocess.run(["git", "remote", "add", "origin", str(asma_remote)], cwd=asma_repo, check=True)
+            subprocess.run(["git", "push", "-u", "origin", "master"], cwd=asma_repo, check=True)
+
+            mock_find_pr.return_value = update_submodule_pointer.PullRequestInfo(
+                number=42,
+                node_id="PR_kwDOAAABBB4",
+                url="https://github.com/Carasent-ASMA/asma-modules/pull/42",
+                head_ref=update_submodule_pointer.build_pointer_branch_name(
+                    "shared/asma-core-helpers",
+                    latest_sha,
+                ),
+            )
+
+            result = update_submodule_pointer.update_pointer_for_latest_master(
+                caller_repo_path=caller_repo,
+                caller_repository="Carasent-ASMA/asma-core-helpers",
+                caller_sha=latest_sha,
+                caller_ref_name="master",
+                expected_branch="master",
+                asma_modules_repository="Carasent-ASMA/asma-modules",
+                asma_modules_token="token",
+                asma_modules_remote_url=str(asma_remote),
+                asma_modules_branch="master",
+                explicit_submodule_path=None,
+                fail_if_unmapped=True,
+                git_user_name="Test User",
+                git_user_email="test@example.com",
+                auto_merge_method="squash",
+            )
+
+            self.assertEqual(result.status, "updated")
+            mock_create_pr.assert_not_called()
+            mock_enable_auto_merge.assert_called_once()
 
 
 if __name__ == "__main__":
