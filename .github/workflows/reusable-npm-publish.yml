@@ -23,9 +23,9 @@ on:
         type: string
         default: "gpt-5-mini"
     secrets:
-      ARGOCD_APP_ID:
+      ASMA_POINTER_SYNC_APP_ID:
         required: false
-      ARGOCD_APP_PRIVATE_KEY:
+      ASMA_POINTER_SYNC_APP_PRIVATE_KEY:
         required: false
 
 jobs:
@@ -157,8 +157,8 @@ jobs:
         if: github.ref_name == 'master'
         uses: ./.github/actions/update-submodule-pointer
         with:
-          github-app-id: ${{ secrets.ARGOCD_APP_ID }}
-          github-app-private-key: ${{ secrets.ARGOCD_APP_PRIVATE_KEY }}
+          github-app-id: ${{ secrets.ASMA_POINTER_SYNC_APP_ID }}
+          github-app-private-key: ${{ secrets.ASMA_POINTER_SYNC_APP_PRIVATE_KEY }}
           caller-repository: ${{ github.repository }}
           caller-sha: ${{ github.sha }}
           caller-ref-name: ${{ github.ref_name }}

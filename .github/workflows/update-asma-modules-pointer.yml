@@ -22,8 +22,8 @@ jobs:
       - name: Update asma-modules pointer
         uses: ./.github/actions/update-submodule-pointer
         with:
-          github-app-id: ${{ secrets.ARGOCD_APP_ID }}
-          github-app-private-key: ${{ secrets.ARGOCD_APP_PRIVATE_KEY }}
+          github-app-id: ${{ secrets.ASMA_POINTER_SYNC_APP_ID }}
+          github-app-private-key: ${{ secrets.ASMA_POINTER_SYNC_APP_PRIVATE_KEY }}
           caller-repository: ${{ github.repository }}
           caller-sha: ${{ github.sha }}
           caller-ref-name: ${{ github.ref_name }}
