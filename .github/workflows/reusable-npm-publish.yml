@@ -22,6 +22,11 @@ on:
         required: false
         type: string
         default: "gpt-5-mini"
+    secrets:
+      ARGOCD_APP_ID:
+        required: false
+      ARGOCD_APP_PRIVATE_KEY:
+        required: false
 
 jobs:
   build-and-publish:
@@ -147,6 +152,16 @@ jobs:
       - name: Publish to npm
         if: steps.release_gate.outputs.should_continue == 'true' && inputs.publish_npm == true
         run: npm publish --provenance --access public
+
+      - name: Update asma-modules pointer
+        if: github.ref_name == 'master'
+        uses: ./.github/actions/update-submodule-pointer
+        with:
+          github-app-id: ${{ secrets.ARGOCD_APP_ID }}
+          github-app-private-key: ${{ secrets.ARGOCD_APP_PRIVATE_KEY }}
+          caller-repository: ${{ github.repository }}
+          caller-sha: ${{ github.sha }}
+          caller-ref-name: ${{ github.ref_name }}
 
       - name: Build summary
         run: python .github/_asma-workflows/.github/scripts/npm_publish/package_json_npm_release.py build-summary

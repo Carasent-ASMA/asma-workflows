@@ -1,0 +1,112 @@
+name: Update Submodule Pointer
+description: Update the matching asma-modules gitlink to the latest successful master SHA.
+
+outputs:
+  status:
+    description: Result status returned by the pointer updater.
+    value: ${{ steps.update_pointer.outputs.status }}
+  updated:
+    description: Whether the action committed and pushed a pointer update.
+    value: ${{ steps.update_pointer.outputs.updated }}
+  submodule_path:
+    description: Resolved asma-modules path for the caller repository.
+    value: ${{ steps.update_pointer.outputs.submodule_path }}
+  target_sha:
+    description: Caller SHA evaluated by the pointer updater.
+    value: ${{ steps.update_pointer.outputs.target_sha }}
+
+inputs:
+  github-app-id:
+    description: GitHub App ID used to mint a token for asma-modules pointer updates.
+    required: false
+    default: ''
+  github-app-private-key:
+    description: GitHub App private key used to mint a token for asma-modules pointer updates.
+    required: false
+    default: ''
+  token-repositories:
+    description: Comma-separated repositories granted to the GitHub App token.
+    required: false
+    default: asma-modules
+  asma-modules-token:
+    description: Optional direct token fallback for asma-modules pointer updates.
+    required: false
+    default: ''
+  caller-repository:
+    description: Caller repository slug in owner/name form.
+    required: true
+  caller-sha:
+    description: Caller commit SHA that completed the build.
+    required: true
+  caller-ref-name:
+    description: Caller ref name for the current workflow run.
+    required: true
+  expected-branch:
+    description: Branch that is allowed to advance the pointer.
+    required: false
+    default: master
+  asma-modules-repository:
+    description: Target repository that stores submodule pointers.
+    required: false
+    default: Carasent-ASMA/asma-modules
+  asma-modules-branch:
+    description: Target branch that stores authoritative submodule pointers.
+    required: false
+    default: master
+  submodule-path:
+    description: Optional explicit asma-modules submodule path override.
+    required: false
+    default: ''
+  fail-if-unmapped:
+    description: Fail when the caller repository cannot be resolved from .gitmodules.
+    required: false
+    default: 'true'
+  python-version:
+    description: Python version used to run the pointer updater.
+    required: false
+    default: '3.12'
+  git-user-name:
+    description: Git author name used for direct pointer commits.
+    required: false
+    default: github-actions[bot]
+  git-user-email:
+    description: Git author email used for direct pointer commits.
+    required: false
+    default: github-actions[bot]@users.noreply.github.com
+
+runs:
+  using: composite
+  steps:
+    - name: Create GitHub App token
+      id: app_token
+      if: ${{ inputs.github-app-id != '' && inputs.github-app-private-key != '' }}
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ inputs.github-app-id }}
+        private-key: ${{ inputs.github-app-private-key }}
+        owner: Carasent-ASMA
+        repositories: ${{ inputs.token-repositories }}
+
+    - name: Setup Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Update asma-modules pointer
+      id: update_pointer
+      shell: bash
+      env:
+        ASMA_MODULES_TOKEN: ${{ steps.app_token.outputs.token || inputs.asma-modules-token }}
+      run: |
+        python "$GITHUB_ACTION_PATH/../../scripts/update_submodule_pointer.py" update-pointer \
+          --caller-repo-path "$GITHUB_WORKSPACE" \
+          --caller-repository "${{ inputs.caller-repository }}" \
+          --caller-sha "${{ inputs.caller-sha }}" \
+          --caller-ref-name "${{ inputs.caller-ref-name }}" \
+          --expected-branch "${{ inputs.expected-branch }}" \
+          --asma-modules-repository "${{ inputs.asma-modules-repository }}" \
+          --asma-modules-branch "${{ inputs.asma-modules-branch }}" \
+          --submodule-path "${{ inputs.submodule-path }}" \
+          --fail-if-unmapped "${{ inputs.fail-if-unmapped }}" \
+          --git-user-name "${{ inputs.git-user-name }}" \
+          --git-user-email "${{ inputs.git-user-email }}"
