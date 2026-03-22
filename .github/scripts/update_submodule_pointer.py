@@ -75,6 +75,14 @@ class PullRequestInfo:
     head_ref: str
 
 
+@dataclass(frozen=True)
+class PullRequestMergeAttempt:
+    """Represent the result of an immediate pull request merge attempt."""
+
+    merged: bool
+    message: str
+
+
 class GitCommandError(RuntimeError):
     """Raise when a git command fails."""
 
@@ -545,6 +553,59 @@ def enable_pull_request_auto_merge(
     raise RuntimeError(f"Failed to enable auto-merge for PR #{pull_request.number}: {combined}")
 
 
+def try_merge_pull_request_immediately(
+    repository: str,
+    pull_request: PullRequestInfo,
+    token: str,
+    merge_method: str,
+) -> PullRequestMergeAttempt:
+    """Try to merge the pointer PR immediately when GitHub already considers it ready."""
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "asma-pointer-updater",
+        "Content-Type": "application/json",
+    }
+    body = json.dumps({"merge_method": merge_method.lower()}).encode("utf-8")
+    api_request = request.Request(
+        f"{GITHUB_API_BASE_URL}/repos/{repository}/pulls/{pull_request.number}/merge",
+        data=body,
+        headers=headers,
+        method="PUT",
+    )
+
+    try:
+        with request.urlopen(api_request) as response:
+            content = response.read().decode("utf-8")
+    except HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+        if exc.code in {405, 409, 422}:
+            return PullRequestMergeAttempt(
+                merged=False,
+                message=error_body or exc.reason,
+            )
+        raise RuntimeError(
+            f"GitHub merge request failed ({exc.code} {exc.reason}): {error_body}"
+        ) from exc
+
+    if not content:
+        return PullRequestMergeAttempt(merged=True, message="Merged successfully")
+
+    payload = json.loads(content)
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"Unexpected GitHub merge payload: {payload}")
+
+    merged = payload.get("merged")
+    message = payload.get("message")
+    if not isinstance(merged, bool):
+        raise RuntimeError(f"GitHub merge payload missing merged flag: {payload}")
+    return PullRequestMergeAttempt(
+        merged=merged,
+        message=message if isinstance(message, str) and message else "Merged successfully",
+    )
+
+
 def update_pointer_for_latest_master(
     *,
     caller_repo_path: Path,
@@ -563,7 +624,7 @@ def update_pointer_for_latest_master(
     auto_merge_method: str,
 ) -> PointerUpdateResult:
     """Open or refresh a pointer PR when the caller SHA is the latest master SHA."""
-    should_preflight_auto_merge = (
+    should_manage_github_pull_request = (
         asma_modules_remote_url is None
         and asma_modules_repository is not None
         and asma_modules_token is not None
@@ -682,13 +743,33 @@ def update_pointer_for_latest_master(
                 asma_modules_token,
             )
 
-        if should_preflight_auto_merge:
+        if should_manage_github_pull_request:
             ensure_branch_allows_auto_merge(
                 asma_modules_repository,
                 asma_modules_branch,
                 asma_modules_token,
                 pull_request.url,
             )
+
+            merge_attempt = try_merge_pull_request_immediately(
+                asma_modules_repository,
+                pull_request,
+                asma_modules_token,
+                auto_merge_method,
+            )
+            if merge_attempt.merged:
+                return PointerUpdateResult(
+                    status="updated",
+                    submodule_path=submodule_path,
+                    target_sha=caller_sha,
+                    message=(
+                        f"Merged pointer PR #{pull_request.number} for {submodule_path} "
+                        f"to {caller_sha[:12]} immediately"
+                    ),
+                    branch_name=branch_name,
+                    pr_number=str(pull_request.number),
+                    pr_url=pull_request.url,
+                )
 
         enable_pull_request_auto_merge(
             pull_request,
