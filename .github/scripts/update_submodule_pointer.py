@@ -349,6 +349,77 @@ def github_request(
     return json.loads(content)
 
 
+def get_branch_rules(
+    repository: str,
+    branch_name: str,
+    token: str,
+) -> list[dict[str, object]]:
+    """Return the active GitHub rules that apply to the target branch."""
+    encoded_branch_name = parse.quote(branch_name, safe="")
+    response = github_request(
+        "GET",
+        f"{GITHUB_API_BASE_URL}/repos/{repository}/rules/branches/{encoded_branch_name}",
+        token,
+    )
+    if not isinstance(response, list):
+        raise RuntimeError(f"Unexpected GitHub branch rules payload: {response}")
+
+    rules: list[dict[str, object]] = []
+    for item in response:
+        if not isinstance(item, dict):
+            raise RuntimeError(f"Unexpected GitHub branch rule item: {item}")
+        rules.append(cast(dict[str, object], item))
+    return rules
+
+
+def describe_update_rules(rules: list[dict[str, object]]) -> list[str]:
+    """Describe branch update rules that can block pointer PR auto-merge."""
+    descriptions: list[str] = []
+    for rule in rules:
+        if rule.get("type") != "update":
+            continue
+
+        source = rule.get("ruleset_source")
+        source_type = rule.get("ruleset_source_type")
+        ruleset_id = rule.get("ruleset_id")
+
+        parts: list[str] = []
+        if isinstance(source, str) and source:
+            parts.append(source)
+        if isinstance(source_type, str) and source_type:
+            parts.append(source_type.lower())
+        if isinstance(ruleset_id, int):
+            parts.append(f"ruleset {ruleset_id}")
+
+        descriptions.append(" / ".join(parts) if parts else "unknown ruleset")
+
+    return descriptions
+
+
+def ensure_branch_allows_auto_merge(
+    repository: str,
+    branch_name: str,
+    token: str,
+    pull_request_url: str,
+) -> None:
+    """Fail early when branch rules would leave the pointer PR auto-merge blocked."""
+    update_rule_descriptions = describe_update_rules(
+        get_branch_rules(repository, branch_name, token)
+    )
+    if not update_rule_descriptions:
+        return
+
+    joined_rules = ", ".join(update_rule_descriptions)
+    raise RuntimeError(
+        "Pointer PR was created, but auto-merge was not enabled because the target branch "
+        f"{repository}:{branch_name} has active Restrict updates rules ({joined_rules}). "
+        "This configuration leaves the PR blocked with 'Cannot update this protected ref' "
+        "even after auto-merge is enabled in the UI. Disable Restrict updates for the target "
+        "branch or merge the PR manually with a bypass-capable actor. "
+        f"PR: {pull_request_url}"
+    )
+
+
 def parse_pull_request_info(payload: dict[str, object]) -> PullRequestInfo:
     """Build a typed pull request record from a GitHub API payload."""
     number = payload.get("number")
@@ -492,6 +563,12 @@ def update_pointer_for_latest_master(
     auto_merge_method: str,
 ) -> PointerUpdateResult:
     """Open or refresh a pointer PR when the caller SHA is the latest master SHA."""
+    should_preflight_auto_merge = (
+        asma_modules_remote_url is None
+        and asma_modules_repository is not None
+        and asma_modules_token is not None
+    )
+
     if caller_ref_name != expected_branch:
         return PointerUpdateResult(
             status="skipped-non-target-branch",
@@ -603,6 +680,14 @@ def update_pointer_for_latest_master(
                 caller_sha,
                 caller_repository,
                 asma_modules_token,
+            )
+
+        if should_preflight_auto_merge:
+            ensure_branch_allows_auto_merge(
+                asma_modules_repository,
+                asma_modules_branch,
+                asma_modules_token,
+                pull_request.url,
             )
 
         enable_pull_request_auto_merge(

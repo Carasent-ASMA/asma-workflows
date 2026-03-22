@@ -55,6 +55,34 @@ def init_repo(path: Path, branch_name: str = "master") -> None:
 
 
 class UpdateSubmodulePointerTests(unittest.TestCase):
+    @patch.object(update_submodule_pointer, "github_request")
+    def test_ensure_branch_allows_auto_merge_raises_for_update_rule(
+        self,
+        mock_github_request: Mock,
+    ) -> None:
+        mock_github_request.return_value = [
+            {
+                "type": "pull_request",
+                "ruleset_source": "Carasent-ASMA",
+                "ruleset_source_type": "Organization",
+                "ruleset_id": 14201319,
+            },
+            {
+                "type": "update",
+                "ruleset_source": "Carasent-ASMA/asma-modules",
+                "ruleset_source_type": "Repository",
+                "ruleset_id": 13925765,
+            },
+        ]
+
+        with self.assertRaisesRegex(RuntimeError, "Cannot update this protected ref"):
+            update_submodule_pointer.ensure_branch_allows_auto_merge(
+                "Carasent-ASMA/asma-modules",
+                "master",
+                "token",
+                "https://github.com/Carasent-ASMA/asma-modules/pull/42",
+            )
+
     def test_resolve_submodule_path_prefers_exact_slug_match(self) -> None:
         mappings = [
             update_submodule_pointer.SubmoduleMapping(
