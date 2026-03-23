@@ -29,7 +29,9 @@ release_gate = load_module()
 
 class ReleaseGateTests(unittest.TestCase):
     def test_style_text_returns_plain_text_when_color_disabled(self) -> None:
-        with mock.patch.object(release_gate, "supports_color_output", return_value=False):
+        with mock.patch.object(
+            release_gate, "supports_color_output", return_value=False
+        ):
             styled = release_gate.style_text("hello", color=release_gate.ANSI_GREEN)
 
         self.assertEqual(styled, "hello")
@@ -37,7 +39,9 @@ class ReleaseGateTests(unittest.TestCase):
     def test_print_commit_lines_emphasizes_subject_and_body(self) -> None:
         output = StringIO()
         with (
-            mock.patch.object(release_gate, "supports_color_output", return_value=False),
+            mock.patch.object(
+                release_gate, "supports_color_output", return_value=False
+            ),
             mock.patch("sys.stdout", new=output),
         ):
             release_gate.print_commit_lines(["feat: ship colors\n\nbody line"])
@@ -121,9 +125,12 @@ class ReleaseGateTests(unittest.TestCase):
             result_output_key="code_changed",
         )
 
-        with mock.patch.object(
-            release_gate, "list_changed_files", return_value=["src/index.ts"]
-        ), mock.patch.object(release_gate, "write_output") as write_output_mock:
+        with (
+            mock.patch.object(
+                release_gate, "list_changed_files", return_value=["src/index.ts"]
+            ),
+            mock.patch.object(release_gate, "write_output") as write_output_mock,
+        ):
             release_gate.cmd_check_path_changes(args)
 
         write_output_mock.assert_any_call("changed", "true")
@@ -136,11 +143,14 @@ class ReleaseGateTests(unittest.TestCase):
             strategy=release_gate.ANALYSIS_STRATEGY_ALL_COMMITS,
         )
 
-        with mock.patch.object(
-            release_gate,
-            "load_commit_messages",
-            return_value=["Update release docs"],
-        ), mock.patch.object(release_gate, "write_output") as write_output_mock:
+        with (
+            mock.patch.object(
+                release_gate,
+                "load_commit_messages",
+                return_value=["Update release docs"],
+            ),
+            mock.patch.object(release_gate, "write_output") as write_output_mock,
+        ):
             release_gate.cmd_release_gate(args)
 
         write_output_mock.assert_any_call("code_changed", "false")
@@ -154,11 +164,15 @@ class ReleaseGateTests(unittest.TestCase):
             strategy=release_gate.ANALYSIS_STRATEGY_ALL_COMMITS,
         )
 
-        with mock.patch.object(
-            release_gate, "list_changed_files", return_value=["src/index.ts"]
-        ), mock.patch.object(
-            release_gate, "load_commit_messages", return_value=["feat: add source"]
-        ), mock.patch.object(release_gate, "write_output") as write_output_mock:
+        with (
+            mock.patch.object(
+                release_gate, "list_changed_files", return_value=["src/index.ts"]
+            ),
+            mock.patch.object(
+                release_gate, "load_commit_messages", return_value=["feat: add source"]
+            ),
+            mock.patch.object(release_gate, "write_output") as write_output_mock,
+        ):
             release_gate.cmd_release_gate(args)
 
         write_output_mock.assert_any_call("code_changed", "true")
@@ -175,11 +189,14 @@ class ReleaseGateTests(unittest.TestCase):
             strategy=release_gate.ANALYSIS_STRATEGY_ALL_COMMITS,
         )
 
-        with mock.patch.object(
-            release_gate,
-            "load_commit_messages",
-            return_value=["release ui icons --force-release"],
-        ), mock.patch.object(release_gate, "write_output") as write_output_mock:
+        with (
+            mock.patch.object(
+                release_gate,
+                "load_commit_messages",
+                return_value=["release ui icons\n\n--force-release"],
+            ),
+            mock.patch.object(release_gate, "write_output") as write_output_mock,
+        ):
             release_gate.cmd_release_gate(args)
 
         write_output_mock.assert_any_call("code_changed", "true")
@@ -194,15 +211,19 @@ class ReleaseGateTests(unittest.TestCase):
             strategy=release_gate.ANALYSIS_STRATEGY_ALL_COMMITS,
         )
 
-        with mock.patch.object(
-            release_gate,
-            "load_commit_messages",
-            return_value=["docs: update release docs"],
-        ), mock.patch.object(release_gate, "write_output") as write_output_mock:
+        with (
+            mock.patch.object(
+                release_gate,
+                "load_commit_messages",
+                return_value=["docs: update release docs"],
+            ),
+            mock.patch.object(release_gate, "write_output") as write_output_mock,
+        ):
             release_gate.cmd_release_gate(args)
 
         write_output_mock.assert_any_call("bump_type", "patch")
         write_output_mock.assert_any_call("should_continue", "true")
+
 
 class ReleaseGateGitRepoTests(unittest.TestCase):
     def setUp(self) -> None:
