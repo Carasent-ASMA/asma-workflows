@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -13,8 +11,11 @@ from urllib import parse, request
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
 
+
 # Shared helper for bot branch naming
-def build_bot_branch_name(prefix: str, name_component: str, sha: str, fallback: str = "branch") -> str:
+def build_bot_branch_name(
+    prefix: str, name_component: str, sha: str, fallback: str = "branch"
+) -> str:
     """Build a deterministic bot branch name with a prefix, sanitized component, and short SHA."""
     sanitized = sanitize_branch_component(name_component, fallback=fallback)
     return f"{prefix}{sanitized}-{sha[:12]}"
@@ -66,6 +67,7 @@ class ProtectedBranchSyncResult:
     already_synced: bool
     pull_request: PullRequestInfo | None = None
     merged_immediately: bool = False
+    pushed_directly: bool = False
 
 
 GITHUB_API_BASE_URL = "https://api.github.com"
@@ -186,6 +188,58 @@ def remote_branch_contains_local_head(
         check=False,
     )
     return result.returncode == 0
+
+
+def push_failure_allows_pull_request_fallback(output: str) -> bool:
+    """Return whether a direct branch push failed for an expected policy reason."""
+
+    normalized_output = output.lower()
+    expected_markers = (
+        "protected branch update failed",
+        "changes must be made through a pull request",
+        "cannot update this protected ref",
+        "non-fast-forward",
+        "[rejected]",
+        "fetch first",
+    )
+    return any(marker in normalized_output for marker in expected_markers)
+
+
+def try_direct_push_to_branch(
+    repo_dir: Path,
+    remote_name: str,
+    target_branch: str,
+    run_command: Callable[..., subprocess.CompletedProcess[str]],
+) -> bool:
+    """Try to update the target branch directly and return whether it succeeded."""
+
+    push_result = run_command(
+        [
+            "git",
+            "-C",
+            str(repo_dir),
+            "push",
+            remote_name,
+            f"HEAD:refs/heads/{target_branch}",
+        ],
+        check=False,
+        capture_output=True,
+    )
+    if push_result.returncode == 0:
+        return True
+
+    combined_output = "\n".join(
+        part
+        for part in (push_result.stdout, push_result.stderr)
+        if isinstance(part, str) and part
+    )
+    if push_failure_allows_pull_request_fallback(combined_output):
+        return False
+
+    raise RuntimeError(
+        "Direct branch push failed before PR fallback: "
+        f"{combined_output or 'no error output returned'}"
+    )
 
 
 def github_request(
@@ -474,7 +528,9 @@ def try_merge_pull_request_immediately(
         raise RuntimeError(f"GitHub merge payload missing merged flag: {payload}")
     return PullRequestMergeAttempt(
         merged=merged,
-        message=message if isinstance(message, str) and message else "Merged successfully",
+        message=message
+        if isinstance(message, str) and message
+        else "Merged successfully",
     )
 
 
@@ -503,6 +559,17 @@ def sync_current_head_to_protected_branch_via_pull_request(
     token = extract_token_from_authenticated_remote_url(remote_url)
     repository = parse_repo_slug_from_remote_url(remote_url)
 
+    if try_direct_push_to_branch(
+        repo_dir,
+        remote_name,
+        target_branch,
+        run_command,
+    ):
+        return ProtectedBranchSyncResult(
+            already_synced=False,
+            pushed_directly=True,
+        )
+
     run_command(
         [
             "git",
@@ -515,28 +582,13 @@ def sync_current_head_to_protected_branch_via_pull_request(
         ]
     )
 
-    pull_request = find_open_pull_request(
+    pull_request = create_or_reuse_pull_request(
         repository,
         source_branch_name,
         target_branch,
+        title,
+        body,
         token,
-    )
-    if pull_request is None:
-        pull_request = create_or_reuse_pull_request(
-            repository,
-            source_branch_name,
-            target_branch,
-            title,
-            body,
-            token,
-            subject_label=subject_label,
-        )
-
-    ensure_branch_allows_auto_merge(
-        repository,
-        target_branch,
-        token,
-        pull_request.url,
         subject_label=subject_label,
     )
 
@@ -552,6 +604,14 @@ def sync_current_head_to_protected_branch_via_pull_request(
             pull_request=pull_request,
             merged_immediately=True,
         )
+
+    ensure_branch_allows_auto_merge(
+        repository,
+        target_branch,
+        token,
+        pull_request.url,
+        subject_label=subject_label,
+    )
 
     enable_pull_request_auto_merge(
         pull_request,

@@ -41,11 +41,53 @@ class GithubPrSharedTests(unittest.TestCase):
             "- source sha: abc123\n",
         )
 
+    @patch.object(github_pr_shared, "parse_repo_slug_from_remote_url")
+    @patch.object(github_pr_shared, "extract_token_from_authenticated_remote_url")
+    @patch.object(github_pr_shared, "try_direct_push_to_branch")
+    @patch.object(github_pr_shared, "remote_branch_contains_local_head")
+    def test_sync_current_head_to_protected_branch_via_pull_request_pushes_directly_when_allowed(
+        self,
+        mock_remote_contains_head: Mock,
+        mock_try_direct_push_to_branch: Mock,
+        mock_extract_token: Mock,
+        mock_parse_slug: Mock,
+    ) -> None:
+        mock_remote_contains_head.return_value = False
+        mock_try_direct_push_to_branch.return_value = True
+        mock_extract_token.return_value = "test-token"
+        mock_parse_slug.return_value = "carasent-asma/asma-argocd"
+        run_command = Mock()
+
+        result = github_pr_shared.sync_current_head_to_protected_branch_via_pull_request(
+            repo_dir=Path("/tmp/asma-argocd"),
+            remote_name="github",
+            target_branch="master",
+            remote_url="https://x-access-token:test-token@github.com/Carasent-ASMA/asma-argocd.git",
+            source_branch_name="bot/argocd-sync/master-1234567890ab",
+            title="asma-srv-auth.dev.version: 1234567.",
+            body="sync body",
+            merge_method="squash",
+            subject_label="ArgoCD sync PR",
+            run_command=run_command,
+        )
+
+        self.assertFalse(result.already_synced)
+        self.assertTrue(result.pushed_directly)
+        self.assertIsNone(result.pull_request)
+        self.assertFalse(result.merged_immediately)
+        mock_try_direct_push_to_branch.assert_called_once_with(
+            Path("/tmp/asma-argocd"),
+            "github",
+            "master",
+            run_command,
+        )
+        run_command.assert_not_called()
+
     @patch.object(github_pr_shared, "enable_pull_request_auto_merge")
     @patch.object(github_pr_shared, "try_merge_pull_request_immediately")
     @patch.object(github_pr_shared, "ensure_branch_allows_auto_merge")
     @patch.object(github_pr_shared, "create_or_reuse_pull_request")
-    @patch.object(github_pr_shared, "find_open_pull_request")
+    @patch.object(github_pr_shared, "try_direct_push_to_branch")
     @patch.object(github_pr_shared, "parse_repo_slug_from_remote_url")
     @patch.object(github_pr_shared, "extract_token_from_authenticated_remote_url")
     @patch.object(github_pr_shared, "remote_branch_contains_local_head")
@@ -54,7 +96,7 @@ class GithubPrSharedTests(unittest.TestCase):
         mock_remote_contains_head: Mock,
         mock_extract_token: Mock,
         mock_parse_slug: Mock,
-        mock_find_open_pull_request: Mock,
+        mock_try_direct_push_to_branch: Mock,
         mock_create_or_reuse_pull_request: Mock,
         mock_ensure_branch_allows_auto_merge: Mock,
         mock_try_merge_pull_request_immediately: Mock,
@@ -63,7 +105,7 @@ class GithubPrSharedTests(unittest.TestCase):
         mock_remote_contains_head.return_value = False
         mock_extract_token.return_value = "test-token"
         mock_parse_slug.return_value = "carasent-asma/asma-argocd"
-        mock_find_open_pull_request.return_value = None
+        mock_try_direct_push_to_branch.return_value = False
         pull_request = github_pr_shared.PullRequestInfo(
             number=42,
             node_id="PR_kwDOAAABBB4",
@@ -102,6 +144,7 @@ class GithubPrSharedTests(unittest.TestCase):
         self.assertFalse(result.already_synced)
         self.assertTrue(result.merged_immediately)
         self.assertEqual(result.pull_request, pull_request)
+        self.assertFalse(result.pushed_directly)
         run_command.assert_called_once_with(
             [
                 "git",
@@ -122,14 +165,53 @@ class GithubPrSharedTests(unittest.TestCase):
             "test-token",
             subject_label="ArgoCD sync PR",
         )
-        mock_ensure_branch_allows_auto_merge.assert_called_once_with(
-            "carasent-asma/asma-argocd",
-            "master",
-            "test-token",
-            pull_request.url,
-            subject_label="ArgoCD sync PR",
-        )
+        mock_ensure_branch_allows_auto_merge.assert_not_called()
         mock_enable_pull_request_auto_merge.assert_not_called()
+
+    def test_try_direct_push_to_branch_returns_false_for_protected_branch_rejection(
+        self,
+    ) -> None:
+        run_command = Mock(
+            return_value=subprocess.CompletedProcess(
+                args=["git", "push"],
+                returncode=1,
+                stdout="",
+                stderr=(
+                    "remote: error: GH006: Protected branch update failed for refs/heads/master.\n"
+                    "remote: error: Changes must be made through a pull request.\n"
+                ),
+            )
+        )
+
+        result = github_pr_shared.try_direct_push_to_branch(
+            Path("/tmp/asma-argocd"),
+            "github",
+            "master",
+            run_command,
+        )
+
+        self.assertFalse(result)
+
+    def test_try_direct_push_to_branch_raises_for_unexpected_failure(self) -> None:
+        run_command = Mock(
+            return_value=subprocess.CompletedProcess(
+                args=["git", "push"],
+                returncode=1,
+                stdout="",
+                stderr="fatal: Authentication failed",
+            )
+        )
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "Direct branch push failed before PR fallback",
+        ):
+            github_pr_shared.try_direct_push_to_branch(
+                Path("/tmp/asma-argocd"),
+                "github",
+                "master",
+                run_command,
+            )
 
     @patch.object(github_pr_shared, "remote_branch_contains_local_head")
     def test_sync_current_head_to_protected_branch_via_pull_request_skips_when_synced(
