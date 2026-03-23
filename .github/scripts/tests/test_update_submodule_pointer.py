@@ -31,6 +31,10 @@ update_submodule_pointer = load_module(
     "update_submodule_pointer",
     "update_submodule_pointer.py",
 )
+github_pr_shared = load_module(
+    "github_pr_shared",
+    "github_pr_shared.py",
+)
 
 
 def run_git(args: list[str], cwd: Path) -> str:
@@ -64,9 +68,9 @@ class UpdateSubmodulePointerTests(unittest.TestCase):
         )
 
         with patch.object(
-            update_submodule_pointer.request,
+            update_submodule_pointer.github_pr_shared.request,
             "urlopen",
-            side_effect=update_submodule_pointer.HTTPError(
+            side_effect=update_submodule_pointer.github_pr_shared.HTTPError(
                 url="https://api.github.com/repos/Carasent-ASMA/asma-modules/pulls/42/merge",
                 code=405,
                 msg="Method Not Allowed",
@@ -176,7 +180,7 @@ class UpdateSubmodulePointerTests(unittest.TestCase):
         mock_try_merge_pull_request_immediately.assert_called_once()
         mock_enable_auto_merge.assert_not_called()
 
-    @patch.object(update_submodule_pointer, "github_request")
+    @patch.object(update_submodule_pointer.github_pr_shared, "github_request")
     def test_ensure_branch_allows_auto_merge_raises_for_update_rule(
         self,
         mock_github_request: Mock,

@@ -3,16 +3,34 @@ from __future__ import annotations
 
 import argparse
 import configparser
-import json
+import importlib.util
 import os
-import re
 import subprocess
+import sys
 import tempfile
-from typing import cast
-from urllib import parse, request
-from urllib.error import HTTPError
 from dataclasses import dataclass
 from pathlib import Path
+
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+
+def load_script_module(module_name: str):
+    """Load a sibling shared helper module from the scripts directory."""
+
+    module_spec = importlib.util.spec_from_file_location(
+        module_name,
+        SCRIPT_DIR / f"{module_name}.py",
+    )
+    if module_spec is None or module_spec.loader is None:
+        raise ImportError(f"Could not load {module_name}.py")
+    module = importlib.util.module_from_spec(module_spec)
+    sys.modules[module_name] = module
+    module_spec.loader.exec_module(module)
+    return module
+
+
+github_pr_shared = load_script_module("github_pr_shared")
 
 
 def write_output(key: str, value: str) -> None:
@@ -34,6 +52,7 @@ class RepoCoordinates:
     @property
     def slug(self) -> str:
         """Return the repository slug in owner/name form."""
+
         return f"{self.owner}/{self.repo}"
 
 
@@ -65,43 +84,19 @@ class PointerUpdateResult:
         return self.status in {"updated", "already-open"}
 
 
-@dataclass(frozen=True)
-class PullRequestInfo:
-    """Represent a GitHub pull request used for pointer updates."""
 
-    number: int
-    node_id: str
-    url: str
-    head_ref: str
-
-
-@dataclass(frozen=True)
-class PullRequestMergeAttempt:
-    """Represent the result of an immediate pull request merge attempt."""
-
-    merged: bool
-    message: str
+# Use shared types directly
+PullRequestInfo = github_pr_shared.PullRequestInfo
+PullRequestMergeAttempt = github_pr_shared.PullRequestMergeAttempt
 
 
 class GitCommandError(RuntimeError):
     """Raise when a git command fails."""
 
 
-GITHUB_API_BASE_URL = "https://api.github.com"
-GRAPHQL_AUTOMERGE_MUTATION = """
-mutation EnablePointerAutoMerge($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod!) {
-    enablePullRequestAutoMerge(
-        input: {
-            pullRequestId: $pullRequestId
-            mergeMethod: $mergeMethod
-        }
-    ) {
-        pullRequest {
-            number
-        }
-    }
-}
-""".strip()
+GITHUB_API_BASE_URL = github_pr_shared.GITHUB_API_BASE_URL
+request = github_pr_shared.request
+HTTPError = github_pr_shared.HTTPError
 
 
 def run_git(
@@ -125,29 +120,11 @@ def run_git(
 
 def parse_repo_coordinates(value: str) -> RepoCoordinates | None:
     """Parse owner/name coordinates from a git URL or slug."""
-    text = value.strip()
-    if not text:
+
+    parsed = github_pr_shared.parse_repo_coordinates(value)
+    if parsed is None:
         return None
-
-    if text.startswith("git@"):
-        _, remainder = text.split(":", 1)
-        path_part = remainder
-    elif text.startswith("https://") or text.startswith("http://"):
-        parts = text.split("/", 3)
-        if len(parts) < 5:
-            return None
-        path_part = parts[3] + "/" + parts[4]
-    else:
-        path_part = text
-
-    normalized = path_part.strip("/")
-    if normalized.endswith(".git"):
-        normalized = normalized[:-4]
-
-    parts = [part for part in normalized.split("/") if part]
-    if len(parts) < 2:
-        return None
-    return RepoCoordinates(owner=parts[-2].lower(), repo=parts[-1].lower())
+    return RepoCoordinates(owner=parsed.owner, repo=parsed.repo)
 
 
 def load_submodule_mappings(gitmodules_path: Path) -> list[SubmoduleMapping]:
@@ -239,15 +216,15 @@ def build_github_remote_url(repository: str, token: str) -> str:
     return f"https://x-access-token:{token}@github.com/{repository}.git"
 
 
-def sanitize_branch_component(value: str) -> str:
-    """Normalize a branch-name component for bot-generated pointer branches."""
-    normalized = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
-    return normalized or "submodule"
-
 
 def build_pointer_branch_name(submodule_path: str, target_sha: str) -> str:
-    """Build a deterministic branch name for a pointer update."""
-    return f"bot/pointer/{sanitize_branch_component(submodule_path)}-{target_sha[:12]}"
+    """Build a deterministic branch name for a pointer update using the shared helper."""
+    return github_pr_shared.build_bot_branch_name(
+        prefix="bot/pointer/",
+        name_component=submodule_path,
+        sha=target_sha,
+        fallback="submodule",
+    )
 
 
 def clone_repository(remote_url: str, branch_name: str, destination: Path) -> Path:
@@ -324,86 +301,6 @@ def push_pointer_commit(repo_path: Path, branch_name: str) -> subprocess.Complet
     )
 
 
-def github_request(
-    method: str,
-    url: str,
-    token: str,
-    payload: dict[str, object] | None = None,
-) -> object:
-    """Call the GitHub REST or GraphQL API using the provided token."""
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "asma-pointer-updater",
-    }
-    body = None
-    if payload is not None:
-        body = json.dumps(payload).encode("utf-8")
-        headers["Content-Type"] = "application/json"
-
-    api_request = request.Request(url, data=body, headers=headers, method=method)
-    try:
-        with request.urlopen(api_request) as response:
-            content = response.read().decode("utf-8")
-    except HTTPError as exc:
-        error_body = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(
-            f"GitHub API request failed ({exc.code} {exc.reason}): {error_body}"
-        ) from exc
-
-    if not content:
-        return {}
-    return json.loads(content)
-
-
-def get_branch_rules(
-    repository: str,
-    branch_name: str,
-    token: str,
-) -> list[dict[str, object]]:
-    """Return the active GitHub rules that apply to the target branch."""
-    encoded_branch_name = parse.quote(branch_name, safe="")
-    response = github_request(
-        "GET",
-        f"{GITHUB_API_BASE_URL}/repos/{repository}/rules/branches/{encoded_branch_name}",
-        token,
-    )
-    if not isinstance(response, list):
-        raise RuntimeError(f"Unexpected GitHub branch rules payload: {response}")
-
-    rules: list[dict[str, object]] = []
-    for item in response:
-        if not isinstance(item, dict):
-            raise RuntimeError(f"Unexpected GitHub branch rule item: {item}")
-        rules.append(cast(dict[str, object], item))
-    return rules
-
-
-def describe_update_rules(rules: list[dict[str, object]]) -> list[str]:
-    """Describe branch update rules that can block pointer PR auto-merge."""
-    descriptions: list[str] = []
-    for rule in rules:
-        if rule.get("type") != "update":
-            continue
-
-        source = rule.get("ruleset_source")
-        source_type = rule.get("ruleset_source_type")
-        ruleset_id = rule.get("ruleset_id")
-
-        parts: list[str] = []
-        if isinstance(source, str) and source:
-            parts.append(source)
-        if isinstance(source_type, str) and source_type:
-            parts.append(source_type.lower())
-        if isinstance(ruleset_id, int):
-            parts.append(f"ruleset {ruleset_id}")
-
-        descriptions.append(" / ".join(parts) if parts else "unknown ruleset")
-
-    return descriptions
-
-
 def ensure_branch_allows_auto_merge(
     repository: str,
     branch_name: str,
@@ -411,73 +308,24 @@ def ensure_branch_allows_auto_merge(
     pull_request_url: str,
 ) -> None:
     """Fail early when branch rules would leave the pointer PR auto-merge blocked."""
-    update_rule_descriptions = describe_update_rules(
-        get_branch_rules(repository, branch_name, token)
-    )
-    if not update_rule_descriptions:
-        return
-
-    joined_rules = ", ".join(update_rule_descriptions)
-    raise RuntimeError(
-        "Pointer PR was created, but auto-merge was not enabled because the target branch "
-        f"{repository}:{branch_name} has active Restrict updates rules ({joined_rules}). "
-        "This configuration leaves the PR blocked with 'Cannot update this protected ref' "
-        "even after auto-merge is enabled in the UI. Disable Restrict updates for the target "
-        "branch or merge the PR manually with a bypass-capable actor. "
-        f"PR: {pull_request_url}"
-    )
-
-
-def parse_pull_request_info(payload: dict[str, object]) -> PullRequestInfo:
-    """Build a typed pull request record from a GitHub API payload."""
-    number = payload.get("number")
-    node_id = payload.get("node_id")
-    html_url = payload.get("html_url")
-    head = payload.get("head")
-    if not isinstance(number, int):
-        raise RuntimeError(f"GitHub PR payload missing integer number: {payload}")
-    if not isinstance(node_id, str) or not node_id:
-        raise RuntimeError(f"GitHub PR payload missing node_id: {payload}")
-    if not isinstance(html_url, str) or not html_url:
-        raise RuntimeError(f"GitHub PR payload missing html_url: {payload}")
-    if not isinstance(head, dict):
-        raise RuntimeError(f"GitHub PR payload missing head ref: {payload}")
-    head_ref = head.get("ref")
-    if not isinstance(head_ref, str) or not head_ref:
-        raise RuntimeError(f"GitHub PR payload missing head ref string: {payload}")
-    return PullRequestInfo(
-        number=number,
-        node_id=node_id,
-        url=html_url,
-        head_ref=head_ref,
-    )
-
-
-def find_open_pointer_pull_request(
-    repository: str,
-    branch_name: str,
-    base_branch: str,
-    token: str,
-) -> PullRequestInfo | None:
-    """Return an existing open pointer PR for the deterministic branch if one exists."""
-    coordinates = parse_repo_coordinates(repository)
-    if coordinates is None:
-        raise RuntimeError(f"Unsupported repository value for PR lookup: {repository}")
-    head_ref = parse.quote(f"{coordinates.owner}:{branch_name}", safe=":")
-    base_ref = parse.quote(base_branch, safe="")
-    response = github_request(
-        "GET",
-        f"{GITHUB_API_BASE_URL}/repos/{repository}/pulls?state=open&head={head_ref}&base={base_ref}",
+    github_pr_shared.ensure_branch_allows_auto_merge(
+        repository,
+        branch_name,
         token,
+        pull_request_url,
+        subject_label="Pointer PR",
     )
-    if not isinstance(response, list):
-        raise RuntimeError(f"Unexpected GitHub PR list payload: {response}")
-    if not response:
-        return None
-    first_item = response[0]
-    if not isinstance(first_item, dict):
-        raise RuntimeError(f"Unexpected GitHub PR item payload: {first_item}")
-    return parse_pull_request_info(cast(dict[str, object], first_item))
+
+
+
+# Use shared parse_pull_request_info directly
+parse_pull_request_info = github_pr_shared.parse_pull_request_info
+
+
+
+# Use shared find_open_pull_request directly
+find_open_pointer_pull_request = github_pr_shared.find_open_pull_request
+
 
 
 def create_pointer_pull_request(
@@ -498,112 +346,23 @@ def create_pointer_pull_request(
         f"- source sha: {target_sha}\n"
         f"- target branch: {base_branch}\n"
     )
-    try:
-        response = github_request(
-            "POST",
-            f"{GITHUB_API_BASE_URL}/repos/{repository}/pulls",
-            token,
-            {
-                "title": title,
-                "head": branch_name,
-                "base": base_branch,
-                "body": body,
-                "maintainer_can_modify": False,
-            },
-        )
-        if not isinstance(response, dict):
-            raise RuntimeError(f"Unexpected GitHub create PR payload: {response}")
-        return parse_pull_request_info(cast(dict[str, object], response))
-    except RuntimeError as exc:
-        if "A pull request already exists" not in str(exc):
-            raise
-    existing = find_open_pointer_pull_request(repository, branch_name, base_branch, token)
-    if existing is None:
-        raise RuntimeError(
-            f"Pointer PR already exists for branch {branch_name}, but it could not be resolved"
-        )
-    return existing
-
-
-def enable_pull_request_auto_merge(
-    pull_request: PullRequestInfo,
-    token: str,
-    merge_method: str,
-) -> None:
-    """Enable auto-merge for the pointer PR using GitHub GraphQL."""
-    response = github_request(
-        "POST",
-        f"{GITHUB_API_BASE_URL}/graphql",
+    return github_pr_shared.create_or_reuse_pull_request(
+        repository,
+        branch_name,
+        base_branch,
+        title,
+        body,
         token,
-        {
-            "query": GRAPHQL_AUTOMERGE_MUTATION,
-            "variables": {
-                "pullRequestId": pull_request.node_id,
-                "mergeMethod": merge_method.upper(),
-            },
-        },
-    )
-    if not isinstance(response, dict):
-        raise RuntimeError(f"Unexpected GitHub GraphQL payload: {response}")
-    errors = response.get("errors")
-    if not isinstance(errors, list) or not errors:
-        return
-    messages = [error.get("message", "unknown GraphQL error") for error in errors if isinstance(error, dict)]
-    combined = "; ".join(message for message in messages if isinstance(message, str))
-    raise RuntimeError(f"Failed to enable auto-merge for PR #{pull_request.number}: {combined}")
-
-
-def try_merge_pull_request_immediately(
-    repository: str,
-    pull_request: PullRequestInfo,
-    token: str,
-    merge_method: str,
-) -> PullRequestMergeAttempt:
-    """Try to merge the pointer PR immediately when GitHub already considers it ready."""
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "asma-pointer-updater",
-        "Content-Type": "application/json",
-    }
-    body = json.dumps({"merge_method": merge_method.lower()}).encode("utf-8")
-    api_request = request.Request(
-        f"{GITHUB_API_BASE_URL}/repos/{repository}/pulls/{pull_request.number}/merge",
-        data=body,
-        headers=headers,
-        method="PUT",
+        subject_label="Pointer PR",
     )
 
-    try:
-        with request.urlopen(api_request) as response:
-            content = response.read().decode("utf-8")
-    except HTTPError as exc:
-        error_body = exc.read().decode("utf-8", errors="replace")
-        if exc.code in {405, 409, 422}:
-            return PullRequestMergeAttempt(
-                merged=False,
-                message=error_body or exc.reason,
-            )
-        raise RuntimeError(
-            f"GitHub merge request failed ({exc.code} {exc.reason}): {error_body}"
-        ) from exc
 
-    if not content:
-        return PullRequestMergeAttempt(merged=True, message="Merged successfully")
 
-    payload = json.loads(content)
-    if not isinstance(payload, dict):
-        raise RuntimeError(f"Unexpected GitHub merge payload: {payload}")
+enable_pull_request_auto_merge = github_pr_shared.enable_pull_request_auto_merge
 
-    merged = payload.get("merged")
-    message = payload.get("message")
-    if not isinstance(merged, bool):
-        raise RuntimeError(f"GitHub merge payload missing merged flag: {payload}")
-    return PullRequestMergeAttempt(
-        merged=merged,
-        message=message if isinstance(message, str) and message else "Merged successfully",
-    )
+
+
+try_merge_pull_request_immediately = github_pr_shared.try_merge_pull_request_immediately
 
 
 def update_pointer_for_latest_master(
