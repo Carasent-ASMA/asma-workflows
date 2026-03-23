@@ -1,66 +1,78 @@
-## Audit: Auto PR Creation & Automerge Logic (Pointer Update & ArgoCD Update)
+# Audit: Auto PR Creation and Automerge Logic
 
-### Scope
+## Scope
+
 This audit covers the automation for protected-branch PR creation and automerge in:
-- `shared/asma-workflows/.github/scripts/update_submodule_pointer.py` (pointer update)
-- `infrastructure/asma-infrastructure/.github/scripts/deploy/argocd_deploy.py` (ArgoCD update)
-- `shared/asma-workflows/.github/scripts/github_pr_shared.py` (shared PR helpers)
 
----
+- `shared/asma-workflows/.github/scripts/update_submodule_pointer.py` for pointer updates
+- `infrastructure/asma-infrastructure/.github/scripts/deploy/argocd_deploy.py` for ArgoCD updates
+- `shared/asma-workflows/.github/scripts/github_pr_shared.py` for shared PR helpers
 
-### 1. Overlap & Duplication
+## Status
 
-- **Shared Logic**: Most low-level PR, automerge, and branch rules logic is now centralized in `github_pr_shared.py`.
-- This includes: branch name sanitization, PR creation/reuse, auto-merge enablement, immediate merge, and protected-branch sync orchestration.
-- **Pointer Update**: Calls shared helpers for all PR/automerge mechanics, but still wraps some types (e.g., its own `PullRequestInfo`) and has pointer-specific branch naming and commit logic.
-- **ArgoCD Update**: Now delegates all PR/automerge mechanics to the shared `sync_current_head_to_protected_branch_via_pull_request` function. Only ArgoCD-specific orchestration and logging remain local.
-- **Duplication**: Minimal remaining duplication. Both pointer and ArgoCD flows have their own branch-naming helpers, but both use the shared branch sanitizer. Each has a thin wrapper for domain-specific PR title/body.
+- Completed: remove redundant PR type wrapping in the pointer updater
+- Completed: unify bot branch name construction in shared PR helpers
+- Completed: centralize PR metadata-body construction in shared PR helpers
+- Deferred: consolidate dynamic module-loader bootstrapping as a broader deploy bootstrap refactor
 
----
+## 1. Overlap and Duplication
 
-### 2. Verbosity & Anti-patterns
+- Shared logic is now centralized in `github_pr_shared.py`.
+- Shared logic includes branch-name sanitization, deterministic bot branch naming, PR creation and reuse, immediate merge attempts, auto-merge enablement, protected-branch rule checks, protected-branch sync orchestration, and markdown metadata-body formatting.
+- Pointer update keeps only pointer-specific concerns: submodule mapping, gitlink mutation, pointer commit creation, and pointer-specific PR summary text.
+- ArgoCD update keeps only ArgoCD-specific concerns: repository preparation, image tag updates, remote sync handling, and ArgoCD-specific PR summary text.
+- Remaining duplication is low and is mostly limited to runtime bootstrap code for dynamically loading helper modules.
 
-- **Dynamic Module Loading**: Both pointer and ArgoCD flows use dynamic import logic to load the shared helper. This is necessary for sparse-checkout CI, but adds boilerplate and makes type-checking harder.
-- **Type Wrapping**: Pointer update re-wraps the shared `PullRequestInfo` and `PullRequestMergeAttempt` types, which is unnecessary now that the shared helper is stable. This adds verbosity and can be error-prone.
-- **Branch Name Construction**: Both flows have their own branch-naming helpers, but the logic is nearly identical except for the prefix. This could be unified with a shared helper that takes a prefix argument.
-- **Commit/PR Message Construction**: Each flow builds its own PR title/body, which is appropriate, but could be further parameterized if more flows are added.
+## 2. Verbosity and Anti-Patterns
 
----
+- Dynamic module loading is still verbose. This is a real issue, but it is broader than the PR/automerge feature because the same bootstrap pattern exists across several deploy scripts.
+- Pointer type wrapping has been removed.
+- Branch-name construction duplication has been removed.
+- PR body construction duplication has been removed for the current scope by introducing a shared metadata-body helper.
 
-### 3. Opportunities for Refactor
+## 3. Refactor Opportunities
 
-**A. Remove Redundant Type Wrapping**
-- Pointer update should use the shared `PullRequestInfo` and `PullRequestMergeAttempt` types directly, not re-wrap them.
+### A. Pointer PR Types
 
-**B. Unify Branch Name Construction**
-- Move branch name construction to a single shared helper in `github_pr_shared.py` that takes a prefix (e.g., `bot/pointer/`, `bot/argocd-sync/`) and a fallback.
-- Both pointer and ArgoCD flows can call this with their desired prefix.
+- Completed. The pointer updater now uses shared PR types directly.
 
-**C. Reduce Dynamic Import Boilerplate**
-- Consider a thin shared loader utility for dynamic imports to reduce repeated code.
-- (Note: Full static import is not possible due to sparse-checkout constraints.)
+### B. Bot Branch Naming
 
-**D. Parameterize PR Message Construction (Optional)**
-- If more flows are added, consider a shared PR message builder that takes domain-specific fields.
+- Completed. Both pointer and ArgoCD flows now use the shared bot-branch helper.
 
----
+### C. Dynamic Module Loader Consolidation
 
-## Refactor Implementation Plan
+- Still worth doing.
+- This should be executed as a broader deploy bootstrap refactor because the duplication appears across multiple deploy scripts, not only in ArgoCD.
+- Full static imports are still not viable because sparse-checkout bootstrapping remains a runtime constraint.
 
-### 1. Remove Redundant Type Wrapping in Pointer Update
-- Change `update_submodule_pointer.py` to use `github_pr_shared.PullRequestInfo` and `PullRequestMergeAttempt` directly.
-- Update all references and tests accordingly.
+### D. PR Metadata Body Construction
 
-### 2. Unify Branch Name Construction
-- Add a shared `build_bot_branch_name(prefix: str, name_component: str, sha: str, fallback: str)` helper to `github_pr_shared.py`.
-- Refactor both pointer and ArgoCD flows to use this for branch naming.
+- Completed for the current scope.
+- The shared metadata-body helper can be reused by future protected-branch PR flows without expanding orchestration code.
 
-### 3. (Optional) Add Shared Dynamic Import Loader
-- If dynamic import logic is repeated in more than two places, add a shared loader utility.
+## Implementation Status
 
-### 4. (Optional) Parameterize PR Message Construction
-- If more flows are added, consider a shared PR message builder.
+### Phase 1. Remove Redundant Type Wrapping
 
----
+- Completed.
 
-**These changes will further reduce duplication, improve maintainability, and make the automation more robust.**
+### Phase 2. Unify Branch Name Construction
+
+- Completed.
+
+### Phase 3. Add Shared Dynamic Import Loader
+
+- Deferred to a broader deploy bootstrap refactor.
+- Recommended scope:
+- consolidate repeated sibling-module loading across deploy scripts
+- keep external shared-helper resolution explicit for sparse-checkout compatibility
+- validate all deploy command entrypoints after consolidation
+
+### Phase 4. Parameterize PR Message Construction
+
+- Completed.
+
+## Recommendation
+
+The PR/automerge implementation is now compact and maintainable for the pointer and ArgoCD flows. The next meaningful refactor is no longer feature-specific PR logic; it is bootstrap consolidation across the deploy script family.

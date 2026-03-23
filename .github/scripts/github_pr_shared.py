@@ -20,6 +20,13 @@ def build_bot_branch_name(prefix: str, name_component: str, sha: str, fallback: 
     return f"{prefix}{sanitized}-{sha[:12]}"
 
 
+def build_metadata_body(summary: str, metadata_items: list[tuple[str, str]]) -> str:
+    """Build a stable markdown body for workflow-generated pull requests."""
+
+    metadata_lines = [f"- {label}: {value}" for label, value in metadata_items]
+    return f"{summary}\n\n" + "\n".join(metadata_lines) + "\n"
+
+
 @dataclass(frozen=True)
 class RepoCoordinates:
     """Normalized repository coordinates used for matching."""
