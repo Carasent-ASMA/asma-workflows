@@ -49,10 +49,12 @@ jobs:
                   ref: master
                   path: .github/_asma-workflows
                   sparse-checkout: |
+                      .github/actions/update-submodule-pointer
                       .github/scripts/release_gate.py
                       .github/scripts/git_tagging_ops.py
                       .github/scripts/git_tagging_plan.py
                       .github/scripts/git_tagging_shared.py
+                      .github/scripts/update_submodule_pointer.py
                       .github/scripts/npm_publish
 
             - name: Validate package name
@@ -155,7 +157,7 @@ jobs:
 
             - name: Update asma-modules pointer
               if: github.ref_name == 'master'
-              uses: Carasent-ASMA/asma-workflows/.github/actions/update-submodule-pointer@master
+              uses: ./.github/_asma-workflows/.github/actions/update-submodule-pointer
               with:
                   github-app-id: ${{ secrets.ASMA_POINTER_SYNC_APP_ID }}
                   github-app-private-key: ${{ secrets.ASMA_POINTER_SYNC_APP_PRIVATE_KEY }}
