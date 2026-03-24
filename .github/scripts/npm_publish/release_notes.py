@@ -53,11 +53,51 @@ def _run(cmd: list[str]) -> None:
     subprocess.run(cmd, check=True)
 
 
+def _escape_actions_message(value: str) -> str:
+    """Escape a message so it can be emitted as a GitHub Actions annotation."""
+    return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
+def _emit_warning(title: str, message: str) -> None:
+    """Emit a warning annotation when running inside GitHub Actions."""
+    escaped_title = _escape_actions_message(title)
+    escaped_message = _escape_actions_message(message)
+    print(f"::warning title={escaped_title}::{escaped_message}")
+
+
+def _append_step_summary(lines: list[str]) -> None:
+    """Append diagnostic lines to the GitHub Actions step summary when present."""
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY", "").strip()
+    if not summary_path:
+        return
+    with Path(summary_path).open("a", encoding="utf-8") as summary_file:
+        summary_file.write("\n".join(lines) + "\n")
+
+
+def _truncate_detail(value: str, limit: int = 500) -> str:
+    """Return a single-line diagnostic detail trimmed to a safe log length."""
+    normalized = " ".join(value.split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: limit - 3] + "..."
+
+
+def _resolve_ai_token() -> tuple[str, str]:
+    """Return the first available AI token and the environment variable name."""
+    for variable_name in ("COPILOT_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"):
+        token = os.environ.get(variable_name, "").strip()
+        if token:
+            return token, variable_name
+    return "", "none"
+
+
 def validate_model(model: str) -> str:
     """Return *model* lowered if in the allow-list, otherwise ``""``."""
     normalised = model.strip().lower()
     if normalised and normalised not in ALLOWED_AI_MODELS:
-        print(f"⚠️ AI model '{normalised}' is not supported; using Copilot account default")
+        print(
+            f"⚠️ AI model '{normalised}' is not supported; using Copilot account default"
+        )
         return ""
     return normalised
 
@@ -106,11 +146,7 @@ def generate_release_notes(
         cmd.extend(["--model", model])
     cmd.extend(["-p", prompt, "--silent"])
 
-    gh_token = (
-        os.environ.get("COPILOT_TOKEN", "").strip()
-        or os.environ.get("GH_TOKEN", "").strip()
-        or os.environ.get("GITHUB_TOKEN", "").strip()
-    )
+    gh_token, token_source = _resolve_ai_token()
     env = dict(os.environ)
     if gh_token:
         env["COPILOT_GITHUB_TOKEN"] = gh_token
@@ -118,16 +154,39 @@ def generate_release_notes(
         env["GITHUB_TOKEN"] = gh_token
 
     result = subprocess.run(
-        cmd, capture_output=True, text=True, check=False, timeout=timeout, env=env,
+        cmd,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=timeout,
+        env=env,
     )
 
     if result.returncode != 0:
-        reason = (result.stderr or result.stdout or "unknown error").strip()
-        raise RuntimeError(f"gh copilot failed: {reason}")
+        stderr_detail = _truncate_detail(result.stderr or "")
+        stdout_detail = _truncate_detail(result.stdout or "")
+        detail_parts = [
+            f"gh copilot exited with code {result.returncode}",
+            f"token source: {token_source}",
+            f"model: {model or 'copilot-account-default'}",
+        ]
+        if stderr_detail:
+            detail_parts.append(f"stderr: {stderr_detail}")
+        if stdout_detail:
+            detail_parts.append(f"stdout: {stdout_detail}")
+        if token_source != "COPILOT_TOKEN":
+            detail_parts.append(
+                "possible cause: no dedicated COPILOT_TOKEN was provided, so the CLI used a fallback token source"
+            )
+        raise RuntimeError("; ".join(detail_parts))
 
     content = (result.stdout or "").strip()
     if not content:
-        raise RuntimeError("gh copilot returned empty output")
+        raise RuntimeError(
+            "gh copilot returned empty output; "
+            f"token source: {token_source}; "
+            f"model: {model or 'copilot-account-default'}"
+        )
     return content
 
 
@@ -149,6 +208,7 @@ def create_release() -> None:
     ai_model = validate_model(
         os.environ.get("AI_RELEASE_NOTES_MODEL", DEFAULT_AI_MODEL)
     )
+    resolved_model = ai_model or "copilot-account-default"
     current_tag = f"v{version}"
 
     # Determine commit range
@@ -184,9 +244,9 @@ def create_release() -> None:
     fallback_lines = [f"## Commit Summary ({bump_type})"]
     fallback_lines.extend(commit_lines if commit_lines else ["- No commits found"])
     notes = "\n".join(fallback_lines)
+    ai_warning_message: str | None = None
 
     # Try AI generation
-    ai_failed = False
     if ai_enabled:
         try:
             notes = generate_release_notes(
@@ -201,8 +261,27 @@ def create_release() -> None:
             )
             print("✅ AI release notes generated (gh copilot)")
         except (RuntimeError, TimeoutError, FileNotFoundError) as err:
-            ai_failed = True
-            print(f"⚠️ AI release notes failed: {err}; using commit summary fallback")
+            ai_warning_message = (
+                "Stage: AI release note generation. "
+                f"Tag: {current_tag}. "
+                f"Package: {package_name}. "
+                f"Model: {resolved_model}. "
+                f"Cause: {err}. "
+                "Fallback: using commit summary notes; release creation will continue."
+            )
+            print("⚠️ AI release notes failed; using commit summary fallback")
+            print(ai_warning_message)
+            _emit_warning("AI release notes fallback", ai_warning_message)
+            _append_step_summary(
+                [
+                    "### AI Release Notes Fallback",
+                    f"- Tag: {current_tag}",
+                    f"- Package: {package_name}",
+                    f"- Model: {resolved_model}",
+                    f"- Cause: {err}",
+                    "- Result: commit summary notes were used and release creation continued",
+                ]
+            )
     else:
         print("ℹ️ AI release notes disabled, using commit summary")
 
@@ -211,18 +290,36 @@ def create_release() -> None:
         tmp.write(notes + "\n")
         notes_path = tmp.name
 
-    _run([
-        "gh", "release", "create", current_tag,
-        "--title", f"Release v{version}",
-        "--generate-notes",
-        "--notes-file", notes_path,
-        "--verify-tag",
-    ])
+    try:
+        _run(
+            [
+                "gh",
+                "release",
+                "create",
+                current_tag,
+                "--title",
+                f"Release v{version}",
+                "--generate-notes",
+                "--notes-file",
+                notes_path,
+                "--verify-tag",
+            ]
+        )
+    except subprocess.CalledProcessError as err:
+        raise RuntimeError(
+            "Stage: GitHub release creation. "
+            f"Tag: {current_tag}. "
+            f"Package: {package_name}. "
+            f"Command failed with exit code {err.returncode}. "
+            "Check whether the tag already has a release or whether the tag is missing remotely."
+        ) from err
 
     Path(notes_path).unlink(missing_ok=True)
 
-    if ai_failed:
-        raise SystemExit(2)
+    if ai_warning_message is not None:
+        print(
+            "✅ GitHub release created successfully with commit-summary fallback notes"
+        )
 
 
 if __name__ == "__main__":
