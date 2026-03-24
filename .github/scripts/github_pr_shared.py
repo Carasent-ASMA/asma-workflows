@@ -134,6 +134,18 @@ def parse_repo_slug_from_remote_url(remote_url: str) -> str:
     return coordinates.slug
 
 
+def parse_repo_slug_from_pull_request_url(pull_request_url: str) -> str:
+    """Extract owner/repo coordinates from a GitHub pull request URL."""
+
+    split_url = urlsplit(pull_request_url)
+    parts = [part for part in split_url.path.strip("/").split("/") if part]
+    if len(parts) < 4 or parts[2] != "pull":
+        raise RuntimeError(
+            f"Could not parse GitHub repo slug from pull request URL: {pull_request_url}"
+        )
+    return f"{parts[0].lower()}/{parts[1].lower()}"
+
+
 def sanitize_branch_component(value: str, fallback: str = "branch") -> str:
     """Normalize a branch-name component for bot-generated branches."""
 
@@ -377,6 +389,30 @@ def parse_pull_request_info(payload: dict[str, object]) -> PullRequestInfo:
     )
 
 
+def get_pull_request_state(
+    repository: str,
+    pull_request_number: int,
+    token: str,
+) -> tuple[str, bool]:
+    """Return the current GitHub pull request state and merged flag."""
+
+    response = github_request(
+        "GET",
+        f"{GITHUB_API_BASE_URL}/repos/{repository}/pulls/{pull_request_number}",
+        token,
+    )
+    if not isinstance(response, dict):
+        raise RuntimeError(f"Unexpected GitHub PR payload: {response}")
+
+    state = response.get("state")
+    merged = response.get("merged")
+    if not isinstance(state, str):
+        raise RuntimeError(f"GitHub PR payload missing state: {response}")
+    if not isinstance(merged, bool):
+        raise RuntimeError(f"GitHub PR payload missing merged flag: {response}")
+    return state, merged
+
+
 def find_open_pull_request(
     repository: str,
     branch_name: str,
@@ -473,6 +509,32 @@ def enable_pull_request_auto_merge(
         if isinstance(error, dict)
     ]
     combined = "; ".join(message for message in messages if isinstance(message, str))
+
+    normalized = combined.lower()
+    repository: str | None = None
+    try:
+        repository = parse_repo_slug_from_pull_request_url(pull_request.url)
+    except RuntimeError:
+        repository = None
+
+    if "clean status" in normalized and repository is not None:
+        merge_attempt = try_merge_pull_request_immediately(
+            repository,
+            pull_request,
+            token,
+            merge_method,
+        )
+        if merge_attempt.merged:
+            return
+
+        state, merged = get_pull_request_state(
+            repository,
+            pull_request.number,
+            token,
+        )
+        if merged or state.lower() == "closed":
+            return
+
     raise RuntimeError(
         f"Failed to enable auto-merge for PR #{pull_request.number}: {combined}"
     )

@@ -213,6 +213,58 @@ class GithubPrSharedTests(unittest.TestCase):
                 run_command,
             )
 
+    @patch.object(github_pr_shared, "get_pull_request_state")
+    @patch.object(github_pr_shared, "try_merge_pull_request_immediately")
+    @patch.object(github_pr_shared, "github_request")
+    def test_enable_pull_request_auto_merge_tolerates_clean_status_for_merged_pr(
+        self,
+        mock_github_request: Mock,
+        mock_try_merge_pull_request_immediately: Mock,
+        mock_get_pull_request_state: Mock,
+    ) -> None:
+        mock_github_request.return_value = {
+            "errors": [
+                {
+                    "message": "Pull request Pull request is in clean status",
+                }
+            ]
+        }
+        mock_try_merge_pull_request_immediately.return_value = (
+            github_pr_shared.PullRequestMergeAttempt(
+                merged=False,
+                message="Pull request is already processed",
+            )
+        )
+        mock_get_pull_request_state.return_value = ("closed", True)
+
+        github_pr_shared.enable_pull_request_auto_merge(
+            github_pr_shared.PullRequestInfo(
+                number=82,
+                node_id="PR_kwDOAAABBB4",
+                url="https://github.com/Carasent-ASMA/asma-modules/pull/82",
+                head_ref="bot/pointer/shared-asma-ui-table-8c7d625a1a3f",
+            ),
+            "token",
+            "squash",
+        )
+
+        mock_try_merge_pull_request_immediately.assert_called_once_with(
+            "carasent-asma/asma-modules",
+            github_pr_shared.PullRequestInfo(
+                number=82,
+                node_id="PR_kwDOAAABBB4",
+                url="https://github.com/Carasent-ASMA/asma-modules/pull/82",
+                head_ref="bot/pointer/shared-asma-ui-table-8c7d625a1a3f",
+            ),
+            "token",
+            "squash",
+        )
+        mock_get_pull_request_state.assert_called_once_with(
+            "carasent-asma/asma-modules",
+            82,
+            "token",
+        )
+
     @patch.object(github_pr_shared, "remote_branch_contains_local_head")
     def test_sync_current_head_to_protected_branch_via_pull_request_skips_when_synced(
         self,
