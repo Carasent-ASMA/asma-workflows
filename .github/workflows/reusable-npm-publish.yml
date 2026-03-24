@@ -122,17 +122,19 @@ jobs:
               env:
                   VERSION: ${{ steps.resolve_release.outputs.version }}
 
-            - name: Commit package version and push tag
+            - name: Create release tag
               if: steps.release_gate.outputs.should_continue == 'true'
               run: >-
-                  python .github/_asma-workflows/.github/scripts/git_tagging_ops.py commit-and-push-follow-tags
-                  --files ${FILES_TO_COMMIT}
-                  --commit-message "chore: bump version to ${{ steps.resolve_release.outputs.tag }} [skip ci]"
+                  python .github/_asma-workflows/.github/scripts/git_tagging_ops.py create-annotated-tag
                   --tag ${{ steps.resolve_release.outputs.tag }}
-                  --tag-message "chore: bump version to ${{ steps.resolve_release.outputs.version }} [skip ci]"
+                  --message "chore: release ${{ steps.resolve_release.outputs.version }} [skip ci]"
+
+            - name: Push release tag
+              if: steps.release_gate.outputs.should_continue == 'true'
+              run: >-
+                  python .github/_asma-workflows/.github/scripts/git_tagging_ops.py push-tag
+                  --tag ${{ steps.resolve_release.outputs.tag }}
                   --remote-name origin
-              env:
-                  FILES_TO_COMMIT: ${{ steps.apply_version.outputs.files_to_commit }}
 
             - name: Install AI release-notes dependencies
               if: steps.release_gate.outputs.should_continue == 'true' && inputs.ai_release_notes_enabled == true
