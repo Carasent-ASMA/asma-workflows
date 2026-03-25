@@ -537,7 +537,7 @@ The recommended execution order is:
 - `_docs/git-tagging-script-flow.md`
 - `_docs/reusable-git-tagging-extraction-plan-completed.md`
 - `infrastructure/asma-infrastructure/.github/workflows/reusable-backend-deploy.yml`
-- `infrastructure/asma-infrastructure/.github/workflows/reusable-hasura-migration.yml`
+- `infrastructure/asma-infrastructure/.github/workflows/reusable-backend-hasura-migration.yml`
 
 ## 1. Requirements & Constraints
 
@@ -654,7 +654,7 @@ The recommended execution order is:
 ## 4. Dependencies
 
 - **DEP-001**: Existing shared tagging and release-gate helpers in `/Users/igor/carasent/asma-modules/shared/asma-workflows/.github/scripts`.
-- **DEP-002**: Existing cross-repo checkout pattern already used by `/Users/igor/carasent/asma-modules/infrastructure/asma-infrastructure/.github/workflows/reusable-backend-deploy.yml` and `/Users/igor/carasent/asma-modules/infrastructure/asma-infrastructure/.github/workflows/reusable-hasura-migration.yml`.
+- **DEP-002**: Existing cross-repo checkout pattern already used by `/Users/igor/carasent/asma-modules/infrastructure/asma-infrastructure/.github/workflows/reusable-backend-deploy.yml` and `/Users/igor/carasent/asma-modules/infrastructure/asma-infrastructure/.github/workflows/reusable-backend-hasura-migration.yml`.
 - **DEP-003**: GitHub secrets for S3 credentials, Hasura endpoints, and Hasura admin secrets for all required environments.
 - **DEP-004**: Agreement on whether app-family workflows must preserve legacy commit-type semantics exactly or may adopt the current shared release-gate semantics.
 - **DEP-005**: Agreement on which GitHub authentication method will be standard for cross-repo reusable workflow and script checkout in private repositories.
@@ -707,4 +707,4 @@ The recommended execution order is:
 
 /Users/igor/carasent/asma-modules/infrastructure/asma-infrastructure/.github/workflows/reusable-backend-deploy.yml
 
-/Users/igor/carasent/asma-modules/infrastructure/asma-infrastructure/.github/workflows/reusable-hasura-migration.yml
+/Users/igor/carasent/asma-modules/infrastructure/asma-infrastructure/.github/workflows/reusable-backend-hasura-migration.yml
