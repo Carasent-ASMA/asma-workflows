@@ -29,6 +29,10 @@ class GitTaggingSharedProtocol(Protocol):
 
     def bump_version(self, version: str, bump_type: str) -> str: ...
 
+    def get_latest_hotpatch_number(
+        self, base_tag: str, merged_only: bool = False
+    ) -> int | None: ...
+
     def get_latest_stable_tag(self, merged_only: bool = False) -> str | None: ...
 
     def get_latest_stable_version(
@@ -54,6 +58,7 @@ _SHARED = cast(GitTaggingSharedProtocol, _load_shared_module())
 
 RELEASE_BRANCH_RE: re.Pattern[str] = _SHARED.RELEASE_BRANCH_RE
 bump_version = _SHARED.bump_version
+get_latest_hotpatch_number = _SHARED.get_latest_hotpatch_number
 get_latest_stable_tag = _SHARED.get_latest_stable_tag
 get_latest_stable_version = _SHARED.get_latest_stable_version
 resolve_first_free_tag = _SHARED.resolve_first_free_tag
@@ -98,7 +103,7 @@ def extract_release_branch_tag(branch_name: str) -> str:
 
 
 def resolve_hotpatch_tag(branch_name: str) -> tuple[str, str]:
-    """Resolve the first free hotpatch tag for the release branch."""
+    """Resolve the next hotpatch tag from the highest existing suffix."""
     base_tag = extract_release_branch_tag(branch_name)
     latest_merged_stable_tag = get_latest_stable_tag(merged_only=True)
     if latest_merged_stable_tag != base_tag:
@@ -107,16 +112,9 @@ def resolve_hotpatch_tag(branch_name: str) -> tuple[str, str]:
             "available on the current branch"
         )
 
-    _, tag = resolve_first_free_tag(
-        initial_candidate="1",
-        next_candidate=lambda current: str(int(current) + 1),
-        build_tag=lambda current: f"{base_tag}-{current}",
-        max_attempts=10,
-        error_message=(
-            "Unable to find a free hotpatch tag after 10 attempts "
-            f"starting from {base_tag}-1"
-        ),
-    )
+    latest_hotpatch_number = get_latest_hotpatch_number(base_tag)
+    next_hotpatch_number = 1 if latest_hotpatch_number is None else latest_hotpatch_number + 1
+    tag = f"{base_tag}-{next_hotpatch_number}"
     version = tag.removeprefix("v")
     return version, tag
 

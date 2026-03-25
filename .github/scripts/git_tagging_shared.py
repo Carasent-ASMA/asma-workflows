@@ -288,6 +288,26 @@ def get_latest_stable_version(merged_only: bool = False) -> str | None:
     return latest_tag.removeprefix("v")
 
 
+def get_latest_hotpatch_number(
+    base_tag: str, merged_only: bool = False
+) -> int | None:
+    """Return the highest hotpatch suffix recorded for a stable tag."""
+    stable_version = parse_stable_tag(base_tag)
+    if stable_version is None:
+        raise RuntimeError(f"Invalid stable tag: {base_tag}")
+
+    hotpatch_numbers = [
+        hotpatch_number
+        for tag in list_tags(merged_only=merged_only)
+        for hotpatch_parts in [parse_hotpatch_tag(tag)]
+        if hotpatch_parts is not None and hotpatch_parts[:3] == stable_version
+        for hotpatch_number in [hotpatch_parts[3]]
+    ]
+    if not hotpatch_numbers:
+        return None
+    return max(hotpatch_numbers)
+
+
 def tag_exists(tag: str) -> bool:
     """Return whether the exact git tag exists locally."""
     result = subprocess.run(

@@ -130,8 +130,8 @@ class GitTaggingTests(GitRepoTestCase):
 
         version, tag = git_tagging_plan.resolve_hotpatch_tag("releases/v1.2.3")
 
-        self.assertEqual(version, "1.2.3-2")
-        self.assertEqual(tag, "v1.2.3-2")
+        self.assertEqual(version, "1.2.3-4")
+        self.assertEqual(tag, "v1.2.3-4")
 
     def test_commit_and_push_follow_tags_builds_expected_git_commands(self) -> None:
         with mock.patch.object(git_tagging_ops, "run") as run_mock, mock.patch.object(
