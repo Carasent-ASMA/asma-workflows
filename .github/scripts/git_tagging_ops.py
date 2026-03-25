@@ -30,12 +30,30 @@ class GitTaggingSharedProtocol(Protocol):
         env: dict[str, str] | None = None,
     ) -> object: ...
 
+    def run_capture(
+        self,
+        cmd: list[str],
+        allow_fail: bool = False,
+        env: dict[str, str] | None = None,
+    ) -> str: ...
+
     def tag_exists(self, tag: str) -> bool: ...
 
 
 _SHARED = cast(GitTaggingSharedProtocol, _load_shared_module())
 run = _SHARED.run
+run_capture = _SHARED.run_capture
 tag_exists = _SHARED.tag_exists
+
+
+def get_current_commit() -> str:
+    """Return the commit SHA currently checked out in the repository."""
+    return run_capture(["git", "rev-parse", "HEAD"])
+
+
+def get_tag_target_commit(tag: str) -> str:
+    """Return the peeled commit SHA referenced by a tag."""
+    return run_capture(["git", "rev-list", "-n", "1", tag])
 
 
 def configure_remote_auth(
@@ -61,7 +79,23 @@ def fetch_tags(remote_name: str | None = None) -> None:
 
 
 def create_annotated_tag(tag: str, message: str) -> None:
-    """Create an annotated tag in the local repository."""
+    """Create an annotated tag in the local repository.
+
+    If the tag already exists and points to the current commit, treat the
+    operation as a no-op so rerunning a release workflow remains safe.
+    """
+    if tag_exists(tag):
+        tag_commit = get_tag_target_commit(tag)
+        current_commit = get_current_commit()
+        if tag_commit == current_commit:
+            print(
+                f"Tag {tag} already exists on the current commit {current_commit}; skipping creation"
+            )
+            return
+        raise RuntimeError(
+            f"Tag {tag} already exists on commit {tag_commit}, current commit is {current_commit}"
+        )
+
     run(["git", "tag", "-a", tag, "-m", message])
 
 
