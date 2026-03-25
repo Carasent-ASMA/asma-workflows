@@ -187,18 +187,6 @@ def resolve_submodule_path(
             f"Ambiguous repo-name mapping for {caller_repository}: {', '.join(repo_name_matches)}"
         )
 
-    path_name_matches = [
-        mapping.path
-        for mapping in mappings
-        if Path(mapping.path).name == caller_coordinates.repo
-    ]
-    if len(path_name_matches) == 1:
-        return path_name_matches[0]
-    if len(path_name_matches) > 1:
-        raise RuntimeError(
-            f"Ambiguous path-name mapping for {caller_repository}: {', '.join(path_name_matches)}"
-        )
-
     return None
 
 
