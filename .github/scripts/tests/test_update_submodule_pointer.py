@@ -228,6 +228,26 @@ class UpdateSubmodulePointerTests(unittest.TestCase):
 
         self.assertEqual(resolved, "shared/asma-core-helpers")
 
+    def test_resolve_submodule_path_falls_back_to_path_name(self) -> None:
+        mappings = [
+            update_submodule_pointer.SubmoduleMapping(
+                name="shared/asma-ui-core",
+                path="shared/asma-ui-core",
+                url="git@github.com:Carasent-ASMA/asma-core-ui.git",
+                coordinates=update_submodule_pointer.parse_repo_coordinates(
+                    "git@github.com:Carasent-ASMA/asma-core-ui.git"
+                ),
+            )
+        ]
+
+        resolved = update_submodule_pointer.resolve_submodule_path(
+            mappings,
+            "Carasent-ASMA/asma-ui-core",
+            None,
+        )
+
+        self.assertEqual(resolved, "shared/asma-ui-core")
+
     def test_update_pointer_skips_when_caller_sha_is_not_latest(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
