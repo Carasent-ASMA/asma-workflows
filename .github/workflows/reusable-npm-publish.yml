@@ -25,8 +25,6 @@ on:
         secrets:
             GH_TOKEN:
                 required: false
-            COPILOT_TOKEN:
-                required: false
             ASMA_POINTER_SYNC_APP_ID:
                 required: false
             ASMA_POINTER_SYNC_APP_PRIVATE_KEY:
@@ -217,7 +215,6 @@ jobs:
                   PACKAGE_NAME: ${{ inputs.package_name }}
                   AI_RELEASE_NOTES_ENABLED: ${{ inputs.ai_release_notes_enabled }}
                   AI_RELEASE_NOTES_MODEL: ${{ inputs.ai_release_notes_model }}
-                  COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
 
             - name: Publish to npm
               if: inputs.publish_npm == true
