@@ -128,6 +128,8 @@ jobs:
 
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
+              env:
+                  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
 
             - name: Build package
               run: pnpm build
@@ -180,6 +182,8 @@ jobs:
 
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
+              env:
+                  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
 
             - name: Apply version to package.json
               id: apply_version
