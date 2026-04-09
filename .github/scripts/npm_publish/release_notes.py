@@ -40,6 +40,11 @@ _NOISE_COMMIT_RE = re.compile(
 
 _DEFAULT_PROMPT_PATH = Path(__file__).with_name("release_notes_prompt.md")
 
+MAX_COMMITS_IN_PROMPT = 80
+MAX_FILES_IN_PROMPT = 120
+MAX_AST_CONTEXT_CHARS = 12_000
+MAX_PROMPT_CHARS = 32_000
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -80,6 +85,59 @@ def _truncate_detail(value: str, limit: int = 500) -> str:
     if len(normalized) <= limit:
         return normalized
     return normalized[: limit - 3] + "..."
+
+
+def _truncate_multiline(value: str, limit: int, label: str) -> str:
+    """Trim long multiline content while preserving the leading context."""
+    if len(value) <= limit:
+        return value
+
+    suffix = f"\n... [{label} truncated, {len(value) - limit} chars omitted]"
+    trimmed_limit = max(0, limit - len(suffix))
+    trimmed = value[:trimmed_limit].rstrip()
+    return f"{trimmed}{suffix}"
+
+
+def _build_release_notes_prompt(
+    *,
+    template: str,
+    package_name: str,
+    version: str,
+    previous_tag: str,
+    current_tag: str,
+    commit_lines: list[str],
+    file_lines: list[str],
+    ast_context: str,
+) -> str:
+    """Build a bounded prompt payload for the Copilot CLI."""
+    meaningful = [line for line in commit_lines if not _NOISE_COMMIT_RE.search(line)]
+    commits_text = "\n".join(meaningful[:MAX_COMMITS_IN_PROMPT]) if meaningful else "- none"
+
+    if len(meaningful) > MAX_COMMITS_IN_PROMPT:
+        commits_text += (
+            f"\n- ... truncated {len(meaningful) - MAX_COMMITS_IN_PROMPT} older commit lines"
+        )
+
+    files_text = "\n".join(file_lines[:MAX_FILES_IN_PROMPT]) if file_lines else "- none"
+    if len(file_lines) > MAX_FILES_IN_PROMPT:
+        files_text += (
+            f"\n- ... truncated {len(file_lines) - MAX_FILES_IN_PROMPT} additional changed files"
+        )
+
+    ast_text = ast_context if ast_context else "Not available."
+    ast_text = _truncate_multiline(ast_text, MAX_AST_CONTEXT_CHARS, "AST context")
+
+    prompt = (
+        template.replace("{{PACKAGE_NAME}}", package_name)
+        .replace("{{VERSION}}", version)
+        .replace("{{PREVIOUS_TAG}}", previous_tag or "none")
+        .replace("{{CURRENT_TAG}}", current_tag)
+        .replace("{{COMMITS}}", commits_text)
+        .replace("{{FILES}}", files_text)
+        .replace("{{AST_CONTEXT}}", ast_text)
+    )
+
+    return _truncate_multiline(prompt, MAX_PROMPT_CHARS, "release-notes prompt")
 
 
 def _resolve_ai_token() -> tuple[str, str]:
@@ -130,17 +188,15 @@ def generate_release_notes(
 
     model = validate_model(model)
 
-    meaningful = [line for line in commit_lines if not _NOISE_COMMIT_RE.search(line)]
-
-    prompt = (
-        prompt_path.read_text(encoding="utf-8")
-        .replace("{{PACKAGE_NAME}}", package_name)
-        .replace("{{VERSION}}", version)
-        .replace("{{PREVIOUS_TAG}}", previous_tag or "none")
-        .replace("{{CURRENT_TAG}}", current_tag)
-        .replace("{{COMMITS}}", "\n".join(meaningful) if meaningful else "- none")
-        .replace("{{FILES}}", "\n".join(file_lines) if file_lines else "- none")
-        .replace("{{AST_CONTEXT}}", ast_context if ast_context else "Not available.")
+    prompt = _build_release_notes_prompt(
+        template=prompt_path.read_text(encoding="utf-8"),
+        package_name=package_name,
+        version=version,
+        previous_tag=previous_tag,
+        current_tag=current_tag,
+        commit_lines=commit_lines,
+        file_lines=file_lines,
+        ast_context=ast_context,
     )
 
     cmd: list[str] = ["gh", "copilot", "--"]
@@ -154,14 +210,22 @@ def generate_release_notes(
     if gh_token:
         env["GH_TOKEN"] = gh_token
 
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=timeout,
-        env=env,
-    )
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout,
+            env=env,
+        )
+    except OSError as err:
+        raise RuntimeError(
+            "gh copilot could not be started; "
+            f"token source: {token_source}; "
+            f"model: {model or 'copilot-account-default'}; "
+            f"os error: {_truncate_detail(str(err))}"
+        ) from err
 
     if result.returncode != 0:
         stderr_detail = _truncate_detail(result.stderr or "")

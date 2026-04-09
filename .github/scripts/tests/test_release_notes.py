@@ -152,6 +152,57 @@ class ReleaseNotesTokenTests(unittest.TestCase):
                     file_lines=["src/index.ts"],
                 )
 
+    def test_build_release_notes_prompt_truncates_large_sections(self) -> None:
+        template = "{{COMMITS}}\n---\n{{FILES}}\n---\n{{AST_CONTEXT}}"
+        commit_lines = [f"- feat: change {index}" for index in range(120)]
+        file_lines = [f"src/file_{index}.ts" for index in range(150)]
+        ast_context = "A" * (release_notes.MAX_AST_CONTEXT_CHARS + 250)
+
+        prompt = release_notes._build_release_notes_prompt(
+            template=template,
+            package_name="test-package",
+            version="1.2.3",
+            previous_tag="v1.2.2",
+            current_tag="v1.2.3",
+            commit_lines=commit_lines,
+            file_lines=file_lines,
+            ast_context=ast_context,
+        )
+
+        self.assertLessEqual(len(prompt), release_notes.MAX_PROMPT_CHARS)
+        self.assertIn("truncated 40 older commit lines", prompt)
+        self.assertIn("truncated 30 additional changed files", prompt)
+        self.assertIn("AST context truncated", prompt)
+
+    def test_generate_release_notes_wraps_oserror(self) -> None:
+        with mock.patch.object(
+            release_notes.Path,
+            "exists",
+            return_value=True,
+        ), mock.patch.object(
+            release_notes.Path,
+            "read_text",
+            return_value="{{PACKAGE_NAME}} {{VERSION}} {{COMMITS}} {{FILES}} {{AST_CONTEXT}}",
+        ), mock.patch.dict(
+            os.environ,
+            {"GH_TOKEN": "gh-token"},
+            clear=False,
+        ), mock.patch.object(
+            release_notes.subprocess,
+            "run",
+            side_effect=OSError(7, "Argument list too long", "gh"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "Argument list too long"):
+                release_notes.generate_release_notes(
+                    package_name="test-package",
+                    version="1.2.3",
+                    previous_tag="v1.2.2",
+                    current_tag="v1.2.3",
+                    commit_lines=["- feat: change"],
+                    file_lines=["src/index.ts"],
+                    ast_context="AST" * 100,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
