@@ -87,6 +87,9 @@ def _resolve_ai_token() -> tuple[str, str]:
     token = os.environ.get("GH_TOKEN", "").strip()
     if token:
         return token, "GH_TOKEN"
+    token = os.environ.get("COPILOT_TOKEN", "").strip()
+    if token:
+        return token, "COPILOT_TOKEN"
     return "", "none"
 
 
@@ -172,9 +175,9 @@ def generate_release_notes(
             detail_parts.append(f"stderr: {stderr_detail}")
         if stdout_detail:
             detail_parts.append(f"stdout: {stdout_detail}")
-        if token_source != "GH_TOKEN":
+        if token_source not in {"GH_TOKEN", "COPILOT_TOKEN"}:
             detail_parts.append(
-                "possible cause: no dedicated GH_TOKEN was provided, so the CLI used a fallback token source"
+                "possible cause: no dedicated GH_TOKEN or COPILOT_TOKEN was provided, so the CLI used a fallback token source"
             )
         raise RuntimeError("; ".join(detail_parts))
 
@@ -197,7 +200,8 @@ def create_release() -> None:
     Reads configuration from environment variables:
         VERSION, BUMP_TYPE, PACKAGE_NAME,
         AI_RELEASE_NOTES_ENABLED, AI_RELEASE_NOTES_MODEL,
-        GH_TOKEN for AI generation, GITHUB_TOKEN for standard GitHub Actions operations
+        GH_TOKEN or COPILOT_TOKEN for AI generation,
+        GITHUB_TOKEN for standard GitHub Actions operations
     """
     version = os.environ["VERSION"]
     bump_type = os.environ.get("BUMP_TYPE", "patch")

@@ -41,7 +41,11 @@ class ReleaseNotesTokenTests(unittest.TestCase):
     def test_resolve_ai_token_prefers_gh_token(self) -> None:
         with mock.patch.dict(
             os.environ,
-            {"GH_TOKEN": "gh-token", "GITHUB_TOKEN": "github-token"},
+            {
+                "GH_TOKEN": "gh-token",
+                "COPILOT_TOKEN": "copilot-token",
+                "GITHUB_TOKEN": "github-token",
+            },
             clear=False,
         ):
             token, source = release_notes._resolve_ai_token()
@@ -49,10 +53,29 @@ class ReleaseNotesTokenTests(unittest.TestCase):
         self.assertEqual(token, "gh-token")
         self.assertEqual(source, "GH_TOKEN")
 
+    def test_resolve_ai_token_falls_back_to_copilot_token(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "GH_TOKEN": "",
+                "COPILOT_TOKEN": "copilot-token",
+                "GITHUB_TOKEN": "github-token",
+            },
+            clear=False,
+        ):
+            token, source = release_notes._resolve_ai_token()
+
+        self.assertEqual(token, "copilot-token")
+        self.assertEqual(source, "COPILOT_TOKEN")
+
     def test_resolve_ai_token_does_not_fall_back_to_github_token(self) -> None:
         with mock.patch.dict(
             os.environ,
-            {"GH_TOKEN": "", "GITHUB_TOKEN": "github-token"},
+            {
+                "GH_TOKEN": "",
+                "COPILOT_TOKEN": "",
+                "GITHUB_TOKEN": "github-token",
+            },
             clear=False,
         ):
             token, source = release_notes._resolve_ai_token()
@@ -105,14 +128,21 @@ class ReleaseNotesTokenTests(unittest.TestCase):
             return_value="{{PACKAGE_NAME}} {{VERSION}} {{COMMITS}} {{FILES}} {{AST_CONTEXT}}",
         ), mock.patch.dict(
             os.environ,
-            {"GH_TOKEN": "", "GITHUB_TOKEN": "github-token"},
+            {
+                "GH_TOKEN": "",
+                "COPILOT_TOKEN": "",
+                "GITHUB_TOKEN": "github-token",
+            },
             clear=False,
         ), mock.patch.object(
             release_notes.subprocess,
             "run",
             return_value=mock.Mock(returncode=1, stderr="boom", stdout=""),
         ):
-            with self.assertRaisesRegex(RuntimeError, "no dedicated GH_TOKEN"):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "no dedicated GH_TOKEN or COPILOT_TOKEN",
+            ):
                 release_notes.generate_release_notes(
                     package_name="test-package",
                     version="1.2.3",
