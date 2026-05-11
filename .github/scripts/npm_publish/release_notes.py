@@ -12,26 +12,18 @@ Or imported as a library:
 
 from __future__ import annotations
 
+import base64
+import json
 import os
 import re
 import subprocess
 import tempfile
+import urllib.error
+import urllib.request
 from pathlib import Path
 
-# ── Model configuration ──────────────────────────────────────────────────────
-
-DEFAULT_AI_MODEL = "gpt-5-mini"
-
-ALLOWED_AI_MODELS: frozenset[str] = frozenset(
-    {
-        "gpt-5-mini",
-        "gpt-5",
-        "gpt-5.1",
-        "gpt-4.1",
-        "gpt-4o",
-        "gpt-4o-mini",
-    }
-)
+DEFAULT_AI_BASE_URL = "https://web.dev.adopus.no/api/editor"
+DEFAULT_AI_SYSTEM_USER = "asma.system_user"
 
 _NOISE_COMMIT_RE = re.compile(
     r"chore.*bump version|\[skip ci\]|chore.*release",
@@ -140,26 +132,34 @@ def _build_release_notes_prompt(
     return _truncate_multiline(prompt, MAX_PROMPT_CHARS, "release-notes prompt")
 
 
-def _resolve_ai_token() -> tuple[str, str]:
-    """Return the first available AI token and the environment variable name."""
-    token = os.environ.get("GH_TOKEN", "").strip()
-    if token:
-        return token, "GH_TOKEN"
-    token = os.environ.get("COPILOT_TOKEN", "").strip()
-    if token:
-        return token, "COPILOT_TOKEN"
-    return "", "none"
+def _resolve_ai_backend_config() -> tuple[str, str, str]:
+    """Resolve AI backend base URL, system user, and shared API token."""
+
+    base_url = os.environ.get("ASMA_AI_BASE_URL", "").strip() or DEFAULT_AI_BASE_URL
+    system_user = os.environ.get("ASMA_SYSTEM_USER", "").strip() or DEFAULT_AI_SYSTEM_USER
+    api_token = os.environ.get("ASMA_AI_API_TOKEN", "").strip()
+    return base_url.rstrip("/"), system_user, api_token
 
 
-def validate_model(model: str) -> str:
-    """Return *model* lowered if in the allow-list, otherwise ``""``."""
-    normalised = model.strip().lower()
-    if normalised and normalised not in ALLOWED_AI_MODELS:
-        print(
-            f"⚠️ AI model '{normalised}' is not supported; using Copilot account default"
-        )
-        return ""
-    return normalised
+def _build_ai_auth_header(system_user: str, api_token: str) -> str:
+    encoded = base64.b64encode(f"{system_user}:{api_token}".encode("utf-8")).decode(
+        "utf-8"
+    )
+    return f"Bearer {encoded}"
+
+
+def _extract_ai_error(exc: urllib.error.HTTPError) -> str:
+    response_body = exc.read().decode("utf-8", errors="ignore")
+    if response_body:
+        try:
+            payload = json.loads(response_body)
+        except json.JSONDecodeError:
+            return _truncate_detail(response_body)
+        if isinstance(payload, dict):
+            message = payload.get("message")
+            if isinstance(message, str) and message.strip():
+                return _truncate_detail(message)
+    return f"HTTP {exc.code}"
 
 
 # ── AI generation (importable) ────────────────────────────────────────────────
@@ -174,19 +174,16 @@ def generate_release_notes(
     commit_lines: list[str],
     file_lines: list[str],
     ast_context: str = "",
-    model: str = "",
     prompt_path: Path | None = None,
     timeout: int = 90,
 ) -> str:
-    """Generate AI release notes via ``gh copilot``.
+    """Generate AI release notes via the ASMA AI backend.
 
-    Raises ``RuntimeError`` on failure (missing template, CLI error, empty output).
+    Raises ``RuntimeError`` on failure (missing template, HTTP error, empty output).
     """
     prompt_path = prompt_path or _DEFAULT_PROMPT_PATH
     if not prompt_path.exists():
         raise RuntimeError(f"Prompt template not found: {prompt_path}")
-
-    model = validate_model(model)
 
     prompt = _build_release_notes_prompt(
         template=prompt_path.read_text(encoding="utf-8"),
@@ -199,58 +196,46 @@ def generate_release_notes(
         ast_context=ast_context,
     )
 
-    cmd: list[str] = ["gh", "copilot", "--"]
-    if model:
-        cmd.extend(["--model", model])
-    cmd.extend(["-p", prompt, "--silent"])
+    base_url, system_user, api_token = _resolve_ai_backend_config()
+    if not api_token:
+        raise RuntimeError("ASMA_AI_API_TOKEN is required for AI release note generation")
 
-    gh_token, token_source = _resolve_ai_token()
-    env = dict(os.environ)
-    env.pop("GITHUB_TOKEN", None)
-    if gh_token:
-        env["GH_TOKEN"] = gh_token
+    request = urllib.request.Request(
+        f"{base_url}/ai/asma-cli/generate-release-notes",
+        data=json.dumps({"prompt": prompt}).encode("utf-8"),
+        headers={
+            "Authorization": _build_ai_auth_header(system_user, api_token),
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
 
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=timeout,
-            env=env,
-        )
-    except OSError as err:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as err:
         raise RuntimeError(
-            "gh copilot could not be started; "
-            f"token source: {token_source}; "
-            f"model: {model or 'copilot-account-default'}; "
-            f"os error: {_truncate_detail(str(err))}"
+            "ASMA AI backend request failed; "
+            f"base URL: {base_url}; "
+            f"detail: {_extract_ai_error(err)}"
+        ) from err
+    except (urllib.error.URLError, TimeoutError, OSError) as err:
+        raise RuntimeError(
+            "ASMA AI backend request failed; "
+            f"base URL: {base_url}; "
+            f"detail: {_truncate_detail(str(err))}"
         ) from err
 
-    if result.returncode != 0:
-        stderr_detail = _truncate_detail(result.stderr or "")
-        stdout_detail = _truncate_detail(result.stdout or "")
-        detail_parts = [
-            f"gh copilot exited with code {result.returncode}",
-            f"token source: {token_source}",
-            f"model: {model or 'copilot-account-default'}",
-        ]
-        if stderr_detail:
-            detail_parts.append(f"stderr: {stderr_detail}")
-        if stdout_detail:
-            detail_parts.append(f"stdout: {stdout_detail}")
-        if token_source not in {"GH_TOKEN", "COPILOT_TOKEN"}:
-            detail_parts.append(
-                "possible cause: no dedicated GH_TOKEN or COPILOT_TOKEN was provided, so the CLI used a fallback token source"
-            )
-        raise RuntimeError("; ".join(detail_parts))
+    if not isinstance(payload, dict):
+        raise RuntimeError("ASMA AI backend returned an unexpected payload")
 
-    content = (result.stdout or "").strip()
+    content = payload.get("content")
+    if isinstance(content, str):
+        content = content.strip()
     if not content:
         raise RuntimeError(
-            "gh copilot returned empty output; "
-            f"token source: {token_source}; "
-            f"model: {model or 'copilot-account-default'}"
+            "ASMA AI backend returned empty output; "
+            f"base URL: {base_url}"
         )
     return content
 
@@ -263,18 +248,14 @@ def create_release() -> None:
 
     Reads configuration from environment variables:
         VERSION, BUMP_TYPE, PACKAGE_NAME,
-        AI_RELEASE_NOTES_ENABLED, AI_RELEASE_NOTES_MODEL,
-        GH_TOKEN or COPILOT_TOKEN for AI generation,
+        AI_RELEASE_NOTES_ENABLED,
+        ASMA_AI_BASE_URL, ASMA_SYSTEM_USER, ASMA_AI_API_TOKEN,
         GITHUB_TOKEN for standard GitHub Actions operations
     """
     version = os.environ["VERSION"]
     bump_type = os.environ.get("BUMP_TYPE", "patch")
     package_name = os.environ.get("PACKAGE_NAME", "package")
     ai_enabled = os.environ.get("AI_RELEASE_NOTES_ENABLED", "true").lower() == "true"
-    ai_model = validate_model(
-        os.environ.get("AI_RELEASE_NOTES_MODEL", DEFAULT_AI_MODEL)
-    )
-    resolved_model = ai_model or "copilot-account-default"
     current_tag = f"v{version}"
 
     # Determine commit range
@@ -323,15 +304,14 @@ def create_release() -> None:
                 commit_lines=commit_lines,
                 file_lines=file_lines,
                 ast_context=ast_context,
-                model=ai_model,
             )
-            print("✅ AI release notes generated (gh copilot)")
+            print("✅ AI release notes generated (ASMA AI backend)")
         except (RuntimeError, TimeoutError, FileNotFoundError) as err:
             ai_warning_message = (
                 "Stage: AI release note generation. "
                 f"Tag: {current_tag}. "
                 f"Package: {package_name}. "
-                f"Model: {resolved_model}. "
+                "Model: backend-managed. "
                 f"Cause: {err}. "
                 "Fallback: using commit summary notes; release creation will continue."
             )
@@ -343,7 +323,7 @@ def create_release() -> None:
                     "### AI Release Notes Fallback",
                     f"- Tag: {current_tag}",
                     f"- Package: {package_name}",
-                    f"- Model: {resolved_model}",
+                    "- Model: backend-managed",
                     f"- Cause: {err}",
                     "- Result: commit summary notes were used and release creation continued",
                 ]

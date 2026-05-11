@@ -8,7 +8,6 @@ from pathlib import Path
 from types import ModuleType
 from unittest import mock
 
-
 SCRIPTS_DIR = Path(__file__).resolve().parents[1]
 MODULE_PATH = SCRIPTS_DIR / "npm_publish" / "release_notes.py"
 
@@ -38,55 +37,60 @@ release_notes = load_module()
 
 
 class ReleaseNotesTokenTests(unittest.TestCase):
-    def test_resolve_ai_token_prefers_gh_token(self) -> None:
+    def test_resolve_ai_backend_config_prefers_explicit_values(self) -> None:
         with mock.patch.dict(
             os.environ,
             {
-                "GH_TOKEN": "gh-token",
-                "COPILOT_TOKEN": "copilot-token",
-                "GITHUB_TOKEN": "github-token",
+                "ASMA_AI_BASE_URL": "https://example.com/api/editor",
+                "ASMA_SYSTEM_USER": "asma.workflow",
+                "ASMA_AI_API_TOKEN": "shared-token",
             },
             clear=False,
         ):
-            token, source = release_notes._resolve_ai_token()
+            base_url, system_user, api_token = release_notes._resolve_ai_backend_config()
 
-        self.assertEqual(token, "gh-token")
-        self.assertEqual(source, "GH_TOKEN")
+        self.assertEqual(base_url, "https://example.com/api/editor")
+        self.assertEqual(system_user, "asma.workflow")
+        self.assertEqual(api_token, "shared-token")
 
-    def test_resolve_ai_token_falls_back_to_copilot_token(self) -> None:
+    def test_resolve_ai_backend_config_uses_defaults_when_optional_values_missing(self) -> None:
         with mock.patch.dict(
             os.environ,
             {
-                "GH_TOKEN": "",
-                "COPILOT_TOKEN": "copilot-token",
-                "GITHUB_TOKEN": "github-token",
+                "ASMA_AI_BASE_URL": "",
+                "ASMA_SYSTEM_USER": "",
+                "ASMA_AI_API_TOKEN": "shared-token",
             },
             clear=False,
         ):
-            token, source = release_notes._resolve_ai_token()
+            base_url, system_user, api_token = release_notes._resolve_ai_backend_config()
 
-        self.assertEqual(token, "copilot-token")
-        self.assertEqual(source, "COPILOT_TOKEN")
+        self.assertEqual(base_url, release_notes.DEFAULT_AI_BASE_URL)
+        self.assertEqual(system_user, release_notes.DEFAULT_AI_SYSTEM_USER)
+        self.assertEqual(api_token, "shared-token")
 
-    def test_resolve_ai_token_does_not_fall_back_to_github_token(self) -> None:
+    def test_build_ai_auth_header_uses_bearer_base64_payload(self) -> None:
+        header = release_notes._build_ai_auth_header("asma.system_user", "secret-token")
+
+        self.assertEqual(
+            header,
+            "Bearer YXNtYS5zeXN0ZW1fdXNlcjpzZWNyZXQtdG9rZW4=",
+        )
+
+    def test_generate_release_notes_posts_json_to_backend(self) -> None:
+        response = mock.MagicMock()
+        response.read.return_value = b'{"content":"notes"}'
+        response.__enter__.return_value = response
+
         with mock.patch.dict(
             os.environ,
             {
-                "GH_TOKEN": "",
-                "COPILOT_TOKEN": "",
-                "GITHUB_TOKEN": "github-token",
+                "ASMA_AI_BASE_URL": "https://example.com/api/editor",
+                "ASMA_SYSTEM_USER": "asma.system_user",
+                "ASMA_AI_API_TOKEN": "shared-token",
             },
             clear=False,
-        ):
-            token, source = release_notes._resolve_ai_token()
-
-        self.assertEqual(token, "")
-        self.assertEqual(source, "none")
-
-    def test_generate_release_notes_removes_github_token_from_ai_env(self) -> None:
-        completed_process = mock.Mock(returncode=0, stdout="notes", stderr="")
-
-        with mock.patch.object(
+        ), mock.patch.object(
             release_notes.Path,
             "exists",
             return_value=True,
@@ -94,15 +98,11 @@ class ReleaseNotesTokenTests(unittest.TestCase):
             release_notes.Path,
             "read_text",
             return_value="{{PACKAGE_NAME}} {{VERSION}} {{COMMITS}} {{FILES}} {{AST_CONTEXT}}",
-        ), mock.patch.dict(
-            os.environ,
-            {"GH_TOKEN": "gh-token", "GITHUB_TOKEN": "github-token"},
-            clear=False,
         ), mock.patch.object(
-            release_notes.subprocess,
-            "run",
-            return_value=completed_process,
-        ) as run_mock:
+            release_notes.urllib.request,
+            "urlopen",
+            return_value=response,
+        ) as urlopen_mock:
             release_notes.generate_release_notes(
                 package_name="test-package",
                 version="1.2.3",
@@ -112,12 +112,19 @@ class ReleaseNotesTokenTests(unittest.TestCase):
                 file_lines=["src/index.ts"],
             )
 
-        env = run_mock.call_args.kwargs["env"]
-        self.assertEqual(env["GH_TOKEN"], "gh-token")
-        self.assertNotIn("COPILOT_GITHUB_TOKEN", env)
-        self.assertNotIn("GITHUB_TOKEN", env)
+        request = urlopen_mock.call_args.args[0]
+        self.assertEqual(
+            request.full_url,
+            "https://example.com/api/editor/ai/asma-cli/generate-release-notes",
+        )
+        self.assertEqual(
+            request.get_header("Authorization"),
+            "Bearer YXNtYS5zeXN0ZW1fdXNlcjpzaGFyZWQtdG9rZW4=",
+        )
+        self.assertEqual(request.get_method(), "POST")
+        self.assertIn('"prompt":', request.data.decode("utf-8"))
 
-    def test_generate_release_notes_reports_missing_gh_token(self) -> None:
+    def test_generate_release_notes_reports_missing_ai_token(self) -> None:
         with mock.patch.object(
             release_notes.Path,
             "exists",
@@ -129,19 +136,14 @@ class ReleaseNotesTokenTests(unittest.TestCase):
         ), mock.patch.dict(
             os.environ,
             {
-                "GH_TOKEN": "",
-                "COPILOT_TOKEN": "",
-                "GITHUB_TOKEN": "github-token",
+                "ASMA_AI_BASE_URL": "https://example.com/api/editor",
+                "ASMA_AI_API_TOKEN": "",
             },
             clear=False,
-        ), mock.patch.object(
-            release_notes.subprocess,
-            "run",
-            return_value=mock.Mock(returncode=1, stderr="boom", stdout=""),
         ):
             with self.assertRaisesRegex(
                 RuntimeError,
-                "no dedicated GH_TOKEN or COPILOT_TOKEN",
+                "ASMA_AI_API_TOKEN is required",
             ):
                 release_notes.generate_release_notes(
                     package_name="test-package",
@@ -185,11 +187,14 @@ class ReleaseNotesTokenTests(unittest.TestCase):
             return_value="{{PACKAGE_NAME}} {{VERSION}} {{COMMITS}} {{FILES}} {{AST_CONTEXT}}",
         ), mock.patch.dict(
             os.environ,
-            {"GH_TOKEN": "gh-token"},
+            {
+                "ASMA_AI_BASE_URL": "https://example.com/api/editor",
+                "ASMA_AI_API_TOKEN": "shared-token",
+            },
             clear=False,
         ), mock.patch.object(
-            release_notes.subprocess,
-            "run",
+            release_notes.urllib.request,
+            "urlopen",
             side_effect=OSError(7, "Argument list too long", "gh"),
         ):
             with self.assertRaisesRegex(RuntimeError, "Argument list too long"):
