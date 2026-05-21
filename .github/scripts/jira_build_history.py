@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib import error, parse, request
 
-ISSUE_KEY_PATTERN = re.compile(r"\b[A-Z][A-Z0-9]+-\d+\b")
+ISSUE_KEY_PATTERN = re.compile(r"\b(ASMA)[ -](\d+)\b", re.IGNORECASE)
 FIELD_ID_ENV = "JIRA_BUILD_HISTORY_FIELD_ID"
 BASE_URL_ENV = "JIRA_BASE_URL"
 EMAIL_ENV = "JIRA_EMAIL"
@@ -243,7 +243,10 @@ def find_jira_keys(text: str) -> list[str]:
 
     if not text:
         return []
-    return ISSUE_KEY_PATTERN.findall(text.upper())
+    # Find all matches and normalize to 'ASMA-1234' format
+    matches = ISSUE_KEY_PATTERN.findall(text)
+    normalized = [f"ASMA-{num}" for _, num in matches]
+    return normalized
 
 
 def resolve_jira_keys(explicit_keys: list[str], sources: list[str]) -> list[str]:
