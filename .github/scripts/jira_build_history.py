@@ -16,6 +16,7 @@ ISSUE_KEY_PATTERN = re.compile(r"\b(ASMA)[ -](\d+)\b", re.IGNORECASE)
 FIELD_ID_ENV = "JIRA_BUILD_HISTORY_FIELD_ID"
 BASE_URL_ENV = "JIRA_BASE_URL"
 EMAIL_ENV = "JIRA_EMAIL"
+EMAIL_ALIAS_ENV = "JIRA_USER_EMAIL"
 API_TOKEN_ENV = "JIRA_API_TOKEN"
 SERVICE_HEADING_LEVEL = 3
 VERSION_HEADING_LEVEL = 2
@@ -146,7 +147,7 @@ def resolve_config_from_env() -> JiraConfig:
     """Resolve Jira configuration from workflow environment variables."""
 
     base_url = os.getenv(BASE_URL_ENV, "").strip().rstrip("/")
-    email = os.getenv(EMAIL_ENV, "").strip()
+    email = os.getenv(EMAIL_ENV, "").strip() or os.getenv(EMAIL_ALIAS_ENV, "").strip()
     api_token = os.getenv(API_TOKEN_ENV, "").strip()
     field_id = os.getenv(FIELD_ID_ENV, "customfield_11607").strip()
 
