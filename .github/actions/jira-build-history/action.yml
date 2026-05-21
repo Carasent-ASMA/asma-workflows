@@ -1,0 +1,164 @@
+name: Jira Build History
+description: Publish one successful GitHub Actions build record to Jira build history.
+
+outputs:
+    update-status:
+        description: Summary status for the Jira update attempt.
+        value: ${{ steps.publish.outputs.update_status }}
+    resolved-jira-keys:
+        description: Comma-separated Jira keys resolved from workflow context.
+        value: ${{ steps.publish.outputs.resolved_jira_keys }}
+    updated-jira-keys:
+        description: Comma-separated Jira keys updated successfully.
+        value: ${{ steps.publish.outputs.updated_jira_keys }}
+    failed-jira-keys:
+        description: Comma-separated Jira keys that failed Jira API updates.
+        value: ${{ steps.publish.outputs.failed_jira_keys }}
+
+inputs:
+    service-name:
+        description: Repository-aligned service name.
+        required: true
+    version:
+        description: Build version shown prominently in Jira.
+        required: true
+    release-kind:
+        description: Human-readable build kind label.
+        required: true
+    family:
+        description: Workflow family such as app or backend.
+        required: true
+    workflow-name:
+        description: Human-readable reusable workflow name.
+        required: true
+    workflow-file:
+        description: Reusable workflow file path.
+        required: true
+    repository:
+        description: GitHub repository slug in owner/name form.
+        required: true
+    server-url:
+        description: GitHub server URL.
+        required: true
+    run-id:
+        description: GitHub Actions run ID.
+        required: true
+    run-attempt:
+        description: GitHub Actions run attempt.
+        required: true
+    event-name:
+        description: GitHub event name.
+        required: true
+    ref-name:
+        description: Git ref name used for the build.
+        required: true
+    commit-sha:
+        description: Full commit SHA for the build.
+        required: true
+    job-results:
+        description: Compact build-time result summary.
+        required: true
+    status:
+        description: Rendered status label.
+        required: false
+        default: success
+    jira-key:
+        description: Optional explicit Jira key to seed key resolution.
+        required: false
+        default: ''
+    commit-message:
+        description: Commit or PR title text used for Jira key discovery.
+        required: false
+        default: ''
+    pr-title:
+        description: Pull request title used for Jira key discovery.
+        required: false
+        default: ''
+    pr-number:
+        description: Pull request number when available.
+        required: false
+        default: ''
+    git-tag:
+        description: Planned or resolved Git tag when available.
+        required: false
+        default: ''
+    artifact-url:
+        description: Build-time artifact URL when available.
+        required: false
+        default: ''
+    image-ref:
+        description: Docker image reference for backend workflows.
+        required: false
+        default: ''
+    recorded-at-utc:
+        description: Optional precomputed timestamp for deterministic testing.
+        required: false
+        default: ''
+
+runs:
+    using: composite
+    steps:
+        - name: Publish Jira build history
+          id: publish
+          shell: bash
+          run: |
+              command=(
+                  python "$GITHUB_ACTION_PATH/../../scripts/jira_build_history.py"
+                  publish
+                  --service-name '${{ inputs.service-name }}'
+                  --version '${{ inputs.version }}'
+                  --release-kind '${{ inputs.release-kind }}'
+                  --family '${{ inputs.family }}'
+                  --workflow-name '${{ inputs.workflow-name }}'
+                  --workflow-file '${{ inputs.workflow-file }}'
+                  --repository '${{ inputs.repository }}'
+                  --server-url '${{ inputs.server-url }}'
+                  --run-id '${{ inputs.run-id }}'
+                  --run-attempt '${{ inputs.run-attempt }}'
+                  --event-name '${{ inputs.event-name }}'
+                  --ref-name '${{ inputs.ref-name }}'
+                  --commit-sha '${{ inputs.commit-sha }}'
+                  --job-results "$JOB_RESULTS"
+                  --status '${{ inputs.status }}'
+              )
+
+              if [ -n "$JIRA_KEY" ]; then
+                  command+=(--jira-key "$JIRA_KEY")
+              fi
+              if [ -n "$COMMIT_MESSAGE" ]; then
+                  command+=(--jira-source "$COMMIT_MESSAGE")
+              fi
+              if [ -n "$PR_TITLE" ]; then
+                  command+=(--jira-source "$PR_TITLE")
+              fi
+              if [ -n "$REF_NAME" ]; then
+                  command+=(--jira-source "$REF_NAME")
+              fi
+              if [ -n "$PR_NUMBER" ]; then
+                  command+=(--pr-number "$PR_NUMBER")
+              fi
+              if [ -n "$GIT_TAG" ]; then
+                  command+=(--git-tag "$GIT_TAG")
+              fi
+              if [ -n "$ARTIFACT_URL" ]; then
+                  command+=(--artifact-url "$ARTIFACT_URL")
+              fi
+              if [ -n "$IMAGE_REF" ]; then
+                  command+=(--image-ref "$IMAGE_REF")
+              fi
+              if [ -n "$RECORDED_AT_UTC" ]; then
+                  command+=(--recorded-at-utc "$RECORDED_AT_UTC")
+              fi
+
+              "${command[@]}"
+          env:
+              ARTIFACT_URL: ${{ inputs.artifact-url }}
+              COMMIT_MESSAGE: ${{ inputs.commit-message }}
+              GIT_TAG: ${{ inputs.git-tag }}
+              IMAGE_REF: ${{ inputs.image-ref }}
+              JIRA_KEY: ${{ inputs.jira-key }}
+              JOB_RESULTS: ${{ inputs.job-results }}
+              PR_NUMBER: ${{ inputs.pr-number }}
+              PR_TITLE: ${{ inputs.pr-title }}
+              RECORDED_AT_UTC: ${{ inputs.recorded-at-utc }}
+              REF_NAME: ${{ inputs.ref-name }}
