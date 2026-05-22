@@ -85,7 +85,7 @@ class JiraBuildHistoryTests(unittest.TestCase):
 
         self.assertEqual(nodes[0]["type"], "heading")
         title_text = jira_build_history.node_text(nodes[0])
-        self.assertEqual(title_text, "asma-app-directory - #47")
+        self.assertEqual(title_text, "asma-app-directory - pr47")
         title_marks = nodes[0]["content"][0]["marks"]
         self.assertTrue(any(mark["type"] == "link" for mark in title_marks))
         self.assertTrue(any(mark["type"] == "textColor" for mark in title_marks))

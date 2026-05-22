@@ -53,6 +53,31 @@ Build and publish npm packages with automatic versioning and tagging.
 - Creates GitHub releases
 - Automatic version tagging
 
+#### Jira Build History Action
+
+The shared Jira build-history implementation lives in:
+
+- `.github/actions/jira-build-history/action.yml`
+- `.github/scripts/jira_build_history.py`
+
+It is used by the reusable app and backend release workflows to append one build-history block per successful run into the Jira textarea custom field configured by `JIRA_BUILD_HISTORY_FIELD_ID`.
+
+The current renderer is optimized for human readability in Jira Cloud:
+
+- A linked title line in `service - version` form, such as `asma-app-directory - pr47` or `asma-app-shell - 1.2.3`
+- A separate `Version: ...` line for stable replacement matching and quick scanning
+- A green `Summary For Non-Technical Readers` section
+- An orange `Technical Details` section with deep links back to GitHub
+
+Jira config is resolved from workflow environment variables:
+
+- `JIRA_BASE_URL`
+- `JIRA_API_TOKEN`
+- `JIRA_EMAIL` or `JIRA_USER_EMAIL`
+- Optional: `JIRA_BUILD_HISTORY_FIELD_ID` (defaults to `customfield_11607`)
+
+In GitHub Actions, `JIRA_BASE_URL` and `JIRA_USER_EMAIL` can be provided from repository or organization variables, while `JIRA_API_TOKEN` should remain a secret.
+
 ### Squash Merge Policy
 
 For repositories using commit-message-based release detection:

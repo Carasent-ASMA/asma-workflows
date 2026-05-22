@@ -350,14 +350,12 @@ def bullet_list_node(items: list[list[dict[str, object]]]) -> dict[str, object]:
 def build_entry_title(entry: BuildHistoryEntry) -> tuple[str, str]:
     """Return the human-readable title and preferred link for one entry."""
 
-    title = entry.service_name
+    title = f"{entry.service_name} - {entry.version}"
     link = entry.run_url
 
     if entry.pr_number and entry.pr_url:
-        title = f"{entry.service_name} - #{entry.pr_number}"
         link = entry.pr_url
     elif entry.git_tag:
-        title = f"{entry.service_name} - {entry.git_tag}"
         if entry.git_tag_url:
             link = entry.git_tag_url
 
