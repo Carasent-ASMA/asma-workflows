@@ -174,6 +174,129 @@ class JiraBuildHistoryTests(unittest.TestCase):
             ],
         )
 
+    def test_merge_entry_document_appends_without_horizontal_rules(self) -> None:
+        existing_entry = jira_build_history.BuildHistoryEntry(
+            service_name="asma-app-directory",
+            version="2.0.0",
+            release_kind="app master build",
+            status="success",
+            recorded_at_utc="2026-05-21 18:00 UTC",
+            entry_id="github:Carasent-ASMA/asma-app-directory:2:1",
+            family="app",
+            repository="Carasent-ASMA/asma-app-directory",
+            workflow_name="Reusable App Master Release",
+            workflow_file=".github/workflows/reusable-app-master-release.yml",
+            run_url="https://github.com/Carasent-ASMA/asma-app-directory/actions/runs/2",
+            event_name="push",
+            ref_name="master",
+            commit_sha="fedcba0987654321",
+            commit_url="https://github.com/Carasent-ASMA/asma-app-directory/commit/fedcba0987654321",
+            job_results="assess_release=success, build_artifact=success",
+        )
+        new_entry = jira_build_history.BuildHistoryEntry(
+            service_name="asma-app-shell",
+            version="1.2.3",
+            release_kind="app master build",
+            status="success",
+            recorded_at_utc="2026-05-21 18:10 UTC",
+            entry_id="github:Carasent-ASMA/asma-app-shell:1:1",
+            family="app",
+            repository="Carasent-ASMA/asma-app-shell",
+            workflow_name="Reusable App Master Release",
+            workflow_file=".github/workflows/reusable-app-master-release.yml",
+            run_url="https://github.com/Carasent-ASMA/asma-app-shell/actions/runs/1",
+            event_name="push",
+            ref_name="master",
+            commit_sha="abcdef1234567890",
+            commit_url="https://github.com/Carasent-ASMA/asma-app-shell/commit/abcdef1234567890",
+            job_results="assess_release=success, build_artifact=success",
+        )
+
+        existing_document = {
+            "type": "doc",
+            "version": 1,
+            "content": jira_build_history.build_block_nodes(existing_entry),
+        }
+
+        merged_document, replaced, duplicate_count = (
+            jira_build_history.merge_entry_document(existing_document, new_entry)
+        )
+
+        self.assertFalse(replaced)
+        self.assertEqual(duplicate_count, 0)
+        self.assertFalse(
+            any(
+                node.get("type") == "horizontalRule"
+                for node in merged_document["content"]
+            )
+        )
+        self.assertEqual(
+            len(jira_build_history.segment_document(merged_document["content"])),
+            2,
+        )
+
+    def test_merge_entry_document_replaces_preview_for_same_service_and_pr(self) -> None:
+        preview_entry = jira_build_history.BuildHistoryEntry(
+            service_name="asma-app-shell",
+            version="pr33",
+            release_kind="preview build",
+            status="success",
+            recorded_at_utc="2026-05-22 08:10 UTC",
+            entry_id="github:Carasent-ASMA/asma-app-shell:26270000000:1",
+            family="app",
+            repository="Carasent-ASMA/asma-app-shell",
+            workflow_name="Reusable App PR Preview",
+            workflow_file=".github/workflows/reusable-app-pr-preview.yml",
+            run_url="https://github.com/Carasent-ASMA/asma-app-shell/actions/runs/26270000000",
+            event_name="pull_request",
+            ref_name="feature/ASMA-7352-release-history",
+            commit_sha="1234567890abcdef",
+            commit_url="https://github.com/Carasent-ASMA/asma-app-shell/commit/1234567890abcdef",
+            job_results="assess_preview=success, build_artifact=success",
+            pr_number="33",
+            pr_url="https://github.com/Carasent-ASMA/asma-app-shell/pull/33",
+        )
+        release_entry = jira_build_history.BuildHistoryEntry(
+            service_name="asma-app-shell",
+            version="0.71.1",
+            release_kind="app master build",
+            status="success",
+            recorded_at_utc="2026-05-22 08:50 UTC",
+            entry_id="github:Carasent-ASMA/asma-app-shell:26278026199:1",
+            family="app",
+            repository="Carasent-ASMA/asma-app-shell",
+            workflow_name="Reusable App Master Release",
+            workflow_file=".github/workflows/reusable-app-master-release.yml",
+            run_url="https://github.com/Carasent-ASMA/asma-app-shell/actions/runs/26278026199",
+            event_name="push",
+            ref_name="master",
+            commit_sha="9fe24e092f6dde5938c18b5148b5560a489668fc",
+            commit_url="https://github.com/Carasent-ASMA/asma-app-shell/commit/9fe24e092f6dde5938c18b5148b5560a489668fc",
+            job_results="assess_release=success, build_artifact=success",
+            pr_number="33",
+            pr_url="https://github.com/Carasent-ASMA/asma-app-shell/pull/33",
+            git_tag="v0.71.1",
+        )
+
+        existing_document = {
+            "type": "doc",
+            "version": 1,
+            "content": jira_build_history.build_block_nodes(preview_entry),
+        }
+
+        merged_document, replaced, duplicate_count = (
+            jira_build_history.merge_entry_document(existing_document, release_entry)
+        )
+
+        self.assertTrue(replaced)
+        self.assertEqual(duplicate_count, 0)
+        segments = jira_build_history.segment_document(merged_document["content"])
+        self.assertEqual(len(segments), 1)
+        self.assertEqual(
+            jira_build_history.identify_segment(segments[0]),
+            jira_build_history.SegmentIdentity("asma-app-shell", "0.71.1"),
+        )
+
     def test_publish_skips_without_jira_keys_and_writes_preview(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             output_path = Path(temp_dir) / "output.txt"

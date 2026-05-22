@@ -95,6 +95,15 @@ class SegmentIdentity:
 
 
 @dataclass(frozen=True)
+class SegmentMetadata:
+    """Managed block metadata parsed from an existing Jira history segment."""
+
+    identity: SegmentIdentity
+    release_kind: str | None
+    pr_number: str | None
+
+
+@dataclass(frozen=True)
 class PublishOutcome:
     """Summarize the result of publishing to a single Jira issue."""
 
@@ -608,6 +617,9 @@ def segment_document(content: list[dict[str, object]]) -> list[list[dict[str, ob
                 segments.append(current)
                 current = []
             continue
+        if current and is_managed_heading(node):
+            segments.append(current)
+            current = []
         current.append(node)
     if current:
         segments.append(current)
@@ -668,15 +680,122 @@ def identify_segment(segment: list[dict[str, object]]) -> SegmentIdentity | None
     return SegmentIdentity(service_name=service_name, version=version)
 
 
+def list_item_texts(node: dict[str, object]) -> list[str]:
+    """Extract plain text from every item in a supported bullet list."""
+
+    if node.get("type") != "bulletList":
+        return []
+
+    content = node.get("content")
+    if not isinstance(content, list):
+        return []
+
+    item_texts: list[str] = []
+    for item in content:
+        if not isinstance(item, dict) or item.get("type") != "listItem":
+            continue
+        item_content = item.get("content")
+        if not isinstance(item_content, list):
+            continue
+        parts = [
+            node_text(child)
+            for child in item_content
+            if isinstance(child, dict)
+        ]
+        item_text = "".join(parts).strip()
+        if item_text:
+            item_texts.append(item_text)
+
+    return item_texts
+
+
+def find_segment_value(
+    segment: list[dict[str, object]],
+    label: str,
+) -> str | None:
+    """Return the value for a labeled bullet-list item inside one segment."""
+
+    prefix = f"{label}:"
+    for node in segment:
+        for item_text in list_item_texts(node):
+            if item_text.startswith(prefix):
+                return item_text.removeprefix(prefix).strip() or None
+    return None
+
+
+def parse_pr_number(value: str | None) -> str | None:
+    """Extract a pull request number from a rendered PR field value."""
+
+    if not value:
+        return None
+
+    match = re.search(r"(\d+)", value)
+    if match is None:
+        return None
+    return match.group(1)
+
+
+def inspect_segment(segment: list[dict[str, object]]) -> SegmentMetadata | None:
+    """Parse managed segment metadata used for smarter replacement rules."""
+
+    identity = identify_segment(segment)
+    if identity is None:
+        return None
+
+    return SegmentMetadata(
+        identity=identity,
+        release_kind=find_segment_value(segment, "Release"),
+        pr_number=parse_pr_number(find_segment_value(segment, "PR")),
+    )
+
+
+def is_preview_release(release_kind: str | None) -> bool:
+    """Return whether a release-kind label represents a preview build."""
+
+    if release_kind is None:
+        return False
+    return release_kind.strip().lower() == "preview build"
+
+
+def should_replace_preview_segment(
+    segment_metadata: SegmentMetadata,
+    entry: BuildHistoryEntry,
+) -> bool:
+    """Return whether a release build should replace a preview block."""
+
+    if entry.pr_number is None or is_preview_release(entry.release_kind):
+        return False
+
+    return (
+        segment_metadata.identity.service_name == entry.service_name
+        and segment_metadata.pr_number == entry.pr_number
+        and is_preview_release(segment_metadata.release_kind)
+    )
+
+
+def is_managed_heading(node: dict[str, object]) -> bool:
+    """Return whether a top-level node is a managed service heading."""
+
+    if node.get("type") != "heading":
+        return False
+
+    attrs = node.get("attrs")
+    if not isinstance(attrs, dict):
+        return False
+    if attrs.get("level") != SERVICE_HEADING_LEVEL:
+        return False
+
+    heading_text = node_text(node).strip()
+    return " - " in heading_text
+
+
 def join_segments(segments: list[list[dict[str, object]]]) -> list[dict[str, object]]:
     """Join normalized segments back into top-level ADF content."""
 
     content: list[dict[str, object]] = []
-    for index, segment in enumerate(segments):
+    for segment in segments:
         if not segment:
             continue
-        if content and index >= 0:
-            content.append({"type": "horizontalRule"})
         content.extend(segment)
     return content
 
@@ -701,8 +820,19 @@ def merge_entry_document(
     target_identity = SegmentIdentity(entry.service_name, entry.version)
 
     for segment in segments:
-        identity = identify_segment(segment)
-        if identity == target_identity:
+        segment_metadata = inspect_segment(segment)
+        if segment_metadata is None:
+            updated_segments.append(segment)
+            continue
+
+        if segment_metadata.identity == target_identity:
+            if not replaced:
+                updated_segments.append(new_segment)
+                replaced = True
+            else:
+                duplicate_count += 1
+            continue
+        if should_replace_preview_segment(segment_metadata, entry):
             if not replaced:
                 updated_segments.append(new_segment)
                 replaced = True
