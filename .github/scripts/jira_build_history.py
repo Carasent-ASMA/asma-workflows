@@ -21,6 +21,9 @@ API_TOKEN_ENV = "JIRA_API_TOKEN"
 SERVICE_HEADING_LEVEL = 3
 VERSION_HEADING_LEVEL = 2
 VERSION_PREFIX = "Version: "
+TITLE_COLOR = "#C9372C"
+SUMMARY_COLOR = "#216E4E"
+TECHNICAL_COLOR = "#C25100"
 
 
 def write_output(key: str, value: str) -> None:
@@ -288,6 +291,7 @@ def text_node(
     *,
     link: str | None = None,
     strong: bool = False,
+    color: str | None = None,
 ) -> dict[str, object]:
     """Build an ADF text node with optional link and strong formatting."""
 
@@ -295,6 +299,8 @@ def text_node(
     marks: list[dict[str, object]] = []
     if strong:
         marks.append({"type": "strong"})
+    if color:
+        marks.append({"type": "textColor", "attrs": {"color": color}})
     if link:
         marks.append({"type": "link", "attrs": {"href": link}})
     if marks:
@@ -308,14 +314,23 @@ def paragraph_node(content: list[dict[str, object]]) -> dict[str, object]:
     return {"type": "paragraph", "content": content}
 
 
-def heading_node(level: int, text: str) -> dict[str, object]:
-    """Build an ADF heading node."""
+def heading_content_node(
+    level: int,
+    content: list[dict[str, object]],
+) -> dict[str, object]:
+    """Build an ADF heading from pre-built content nodes."""
 
     return {
         "type": "heading",
         "attrs": {"level": level},
-        "content": [text_node(text)],
+        "content": content,
     }
+
+
+def heading_node(level: int, text: str) -> dict[str, object]:
+    """Build an ADF heading node."""
+
+    return heading_content_node(level, [text_node(text)])
 
 
 def bullet_list_node(items: list[list[dict[str, object]]]) -> dict[str, object]:
@@ -332,15 +347,35 @@ def bullet_list_node(items: list[list[dict[str, object]]]) -> dict[str, object]:
     return {"type": "bulletList", "content": content}
 
 
+def build_entry_title(entry: BuildHistoryEntry) -> tuple[str, str]:
+    """Return the human-readable title and preferred link for one entry."""
+
+    title = entry.service_name
+    link = entry.run_url
+
+    if entry.pr_number and entry.pr_url:
+        title = f"{entry.service_name} - #{entry.pr_number}"
+        link = entry.pr_url
+    elif entry.git_tag:
+        title = f"{entry.service_name} - {entry.git_tag}"
+        if entry.git_tag_url:
+            link = entry.git_tag_url
+
+    return title, link
+
+
 def human_preview(entry: BuildHistoryEntry) -> str:
     """Build a markdown-like preview text for logs and step summaries."""
+
+    title, title_link = build_entry_title(entry)
+    rendered_title = f"[{title}]({title_link})" if title_link else title
 
     preview_lines = [
         "---",
         "",
-        f"### {entry.service_name}",
+        f"### {rendered_title}",
         "",
-        f"## Version: {entry.version}",
+        f"Version: {entry.version}",
         "",
         "**Summary For Non-Technical Readers**",
         "",
@@ -379,25 +414,42 @@ def human_preview(entry: BuildHistoryEntry) -> str:
 def build_block_nodes(entry: BuildHistoryEntry) -> list[dict[str, object]]:
     """Build the managed ADF block for one Jira build-history entry."""
 
+    title, title_link = build_entry_title(entry)
+
     summary_items = [
-        [text_node("Release: "), text_node(entry.release_kind)],
-        [text_node("Status: "), text_node(entry.status)],
-        [text_node("Recorded: "), text_node(entry.recorded_at_utc)],
+        [
+            text_node("Release: ", strong=True, color=SUMMARY_COLOR),
+            text_node(entry.release_kind, color=SUMMARY_COLOR),
+        ],
+        [
+            text_node("Status: ", strong=True, color=SUMMARY_COLOR),
+            text_node(entry.status, color=SUMMARY_COLOR),
+        ],
+        [
+            text_node("Recorded: ", strong=True, color=SUMMARY_COLOR),
+            text_node(entry.recorded_at_utc, color=SUMMARY_COLOR),
+        ],
     ]
 
     technical_items: list[list[dict[str, object]]] = [
         [
-            text_node("Run: "),
+            text_node("Run: ", strong=True, color=TECHNICAL_COLOR),
             text_node("GitHub Actions run", link=entry.run_url),
         ],
-        [text_node("Repository: "), text_node(entry.repository)],
-        [text_node("Workflow: "), text_node(entry.workflow_name)],
+        [
+            text_node("Repository: ", strong=True, color=TECHNICAL_COLOR),
+            text_node(entry.repository, color=TECHNICAL_COLOR),
+        ],
+        [
+            text_node("Workflow: ", strong=True, color=TECHNICAL_COLOR),
+            text_node(entry.workflow_name, color=TECHNICAL_COLOR),
+        ],
     ]
 
     if entry.pr_number and entry.pr_url:
         technical_items.append(
             [
-                text_node("PR: "),
+                text_node("PR: ", strong=True, color=TECHNICAL_COLOR),
                 text_node(f"#{entry.pr_number}", link=entry.pr_url),
             ]
         )
@@ -405,7 +457,7 @@ def build_block_nodes(entry: BuildHistoryEntry) -> list[dict[str, object]]:
     technical_items.extend(
         [
             [
-                text_node("Commit: "),
+                text_node("Commit: ", strong=True, color=TECHNICAL_COLOR),
                 text_node(short_sha(entry.commit_sha), link=entry.commit_url),
             ],
         ]
@@ -415,41 +467,89 @@ def build_block_nodes(entry: BuildHistoryEntry) -> list[dict[str, object]]:
         if entry.git_tag_url:
             technical_items.append(
                 [
-                    text_node("Planned git tag: "),
+                    text_node(
+                        "Planned git tag: ",
+                        strong=True,
+                        color=TECHNICAL_COLOR,
+                    ),
                     text_node(entry.git_tag, link=entry.git_tag_url),
                 ]
             )
         else:
             technical_items.append(
-                [text_node("Planned git tag: "), text_node(entry.git_tag)]
+                [
+                    text_node(
+                        "Planned git tag: ",
+                        strong=True,
+                        color=TECHNICAL_COLOR,
+                    ),
+                    text_node(entry.git_tag, color=TECHNICAL_COLOR),
+                ]
             )
 
     if entry.artifact_url:
         technical_items.append(
             [
-                text_node("Artifact: "),
+                text_node("Artifact: ", strong=True, color=TECHNICAL_COLOR),
                 text_node("Artifact", link=entry.artifact_url),
             ]
         )
 
     if entry.image_ref:
         technical_items.append(
-            [text_node("Image: "), text_node(entry.image_ref)]
+            [
+                text_node("Image: ", strong=True, color=TECHNICAL_COLOR),
+                text_node(entry.image_ref, color=TECHNICAL_COLOR),
+            ]
         )
 
     technical_items.extend(
         [
-            [text_node("Build key: "), text_node(entry.entry_id)],
-            [text_node("Job results: "), text_node(entry.job_results)],
+            [
+                text_node("Build key: ", strong=True, color=TECHNICAL_COLOR),
+                text_node(entry.entry_id, color=TECHNICAL_COLOR),
+            ],
+            [
+                text_node("Job results: ", strong=True, color=TECHNICAL_COLOR),
+                text_node(entry.job_results, color=TECHNICAL_COLOR),
+            ],
         ]
     )
 
     return [
-        heading_node(SERVICE_HEADING_LEVEL, entry.service_name),
-        heading_node(VERSION_HEADING_LEVEL, f"{VERSION_PREFIX}{entry.version}"),
-        paragraph_node([text_node("Summary For Non-Technical Readers", strong=True)]),
+        heading_content_node(
+            SERVICE_HEADING_LEVEL,
+            [
+                text_node(
+                    title,
+                    link=title_link,
+                    strong=True,
+                    color=TITLE_COLOR,
+                )
+            ],
+        ),
+        paragraph_node(
+            [text_node("Version: ", strong=True), text_node(entry.version)]
+        ),
+        paragraph_node(
+            [
+                text_node(
+                    "Summary For Non-Technical Readers",
+                    strong=True,
+                    color=SUMMARY_COLOR,
+                )
+            ]
+        ),
         bullet_list_node(summary_items),
-        paragraph_node([text_node("Technical Details", strong=True)]),
+        paragraph_node(
+            [
+                text_node(
+                    "Technical Details",
+                    strong=True,
+                    color=TECHNICAL_COLOR,
+                )
+            ]
+        ),
         bullet_list_node(technical_items),
     ]
 
@@ -543,7 +643,6 @@ def identify_segment(segment: list[dict[str, object]]) -> SegmentIdentity | None
         return None
 
     service_node = segment[0]
-    version_node = segment[1]
 
     if service_node.get("type") != "heading":
         return None
@@ -553,20 +652,18 @@ def identify_segment(segment: list[dict[str, object]]) -> SegmentIdentity | None
     if service_attrs.get("level") != SERVICE_HEADING_LEVEL:
         return None
 
-    if version_node.get("type") != "heading":
-        return None
-    version_attrs = version_node.get("attrs")
-    if not isinstance(version_attrs, dict):
-        return None
-    if version_attrs.get("level") != VERSION_HEADING_LEVEL:
+    raw_service_name = node_text(service_node).strip()
+    service_name = raw_service_name.partition(" - ")[0].strip()
+    if not service_name:
         return None
 
-    service_name = node_text(service_node).strip()
-    version_text = node_text(version_node).strip()
-    if not service_name or not version_text.startswith(VERSION_PREFIX):
-        return None
+    version = ""
+    for node in segment[1:4]:
+        version_text = node_text(node).strip()
+        if version_text.startswith(VERSION_PREFIX):
+            version = version_text.removeprefix(VERSION_PREFIX).strip()
+            break
 
-    version = version_text.removeprefix(VERSION_PREFIX).strip()
     if not version:
         return None
 

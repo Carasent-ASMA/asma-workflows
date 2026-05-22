@@ -6,6 +6,8 @@ import os
 import sys
 import tempfile
 import unittest
+from collections.abc import Mapping
+from email.message import Message
 from io import BytesIO
 from pathlib import Path
 from types import ModuleType
@@ -33,7 +35,7 @@ jira_build_history = load_module("jira_build_history", "jira_build_history.py")
 
 
 class FakeHttpResponse:
-    def __init__(self, payload: dict[str, object] | None = None) -> None:
+    def __init__(self, payload: Mapping[str, object] | None = None) -> None:
         self.payload = payload
 
     def __enter__(self) -> FakeHttpResponse:
@@ -56,6 +58,52 @@ class JiraBuildHistoryTests(unittest.TestCase):
         )
 
         self.assertEqual(resolved, ["ASMA-10", "ASMA-20", "ASMA-30"])
+
+    def test_build_block_nodes_use_human_readable_linked_title(self) -> None:
+        entry = jira_build_history.BuildHistoryEntry(
+            service_name="asma-app-directory",
+            version="pr47",
+            release_kind="preview build",
+            status="success",
+            recorded_at_utc="2026-05-22 07:49 UTC",
+            entry_id="github:Carasent-ASMA/asma-app-directory:26275344532:1",
+            family="app",
+            repository="Carasent-ASMA/asma-app-directory",
+            workflow_name="Reusable App PR Preview",
+            workflow_file=".github/workflows/reusable-app-pr-preview.yml",
+            run_url="https://github.com/Carasent-ASMA/asma-app-directory/actions/runs/26275344532",
+            event_name="pull_request",
+            ref_name="fix/ASMA-7349-regressions",
+            commit_sha="ac8bc7f1234567890",
+            commit_url="https://github.com/Carasent-ASMA/asma-app-directory/commit/ac8bc7f1234567890",
+            job_results="assess_preview=success, build_artifact=success",
+            pr_number="47",
+            pr_url="https://github.com/Carasent-ASMA/asma-app-directory/pull/47",
+        )
+
+        nodes = jira_build_history.build_block_nodes(entry)
+
+        self.assertEqual(nodes[0]["type"], "heading")
+        title_text = jira_build_history.node_text(nodes[0])
+        self.assertEqual(title_text, "asma-app-directory - #47")
+        title_marks = nodes[0]["content"][0]["marks"]
+        self.assertTrue(any(mark["type"] == "link" for mark in title_marks))
+        self.assertTrue(any(mark["type"] == "textColor" for mark in title_marks))
+        self.assertEqual(jira_build_history.node_text(nodes[1]), "Version: pr47")
+
+    def test_resolve_config_from_env_accepts_jira_user_email_alias(self) -> None:
+        env = {
+            "JIRA_BASE_URL": "https://example.atlassian.net",
+            "JIRA_USER_EMAIL": "jira@example.com",
+            "JIRA_API_TOKEN": "secret",
+        }
+
+        with mock.patch.dict(os.environ, env, clear=False):
+            config = jira_build_history.resolve_config_from_env()
+
+        self.assertEqual(config.base_url, "https://example.atlassian.net")
+        self.assertEqual(config.email, "jira@example.com")
+        self.assertEqual(config.api_token, "secret")
 
     def test_merge_entry_document_collapses_duplicate_matching_blocks(self) -> None:
         entry = jira_build_history.BuildHistoryEntry(
@@ -273,7 +321,7 @@ class JiraBuildHistoryTests(unittest.TestCase):
                 url="https://example.atlassian.net/rest/api/3/issue/ASMA-2",
                 code=403,
                 msg="Forbidden",
-                hdrs=None,
+                hdrs=Message(),
                 fp=BytesIO(b'{"errorMessages":["Forbidden"]}'),
             ),
         ]
