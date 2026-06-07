@@ -8,7 +8,6 @@ from pathlib import Path
 from types import ModuleType
 from unittest.mock import Mock, patch
 
-
 SCRIPTS_DIR = Path(__file__).resolve().parents[1]
 
 
@@ -64,7 +63,7 @@ class GithubPrSharedTests(unittest.TestCase):
             target_branch="master",
             remote_url="https://x-access-token:test-token@github.com/Carasent-ASMA/asma-argocd.git",
             source_branch_name="bot/argocd-sync/master-1234567890ab",
-            title="asma-srv-auth.dev.version: 1234567.",
+            title="asma-njs-auth.dev.version: 1234567.",
             body="sync body",
             merge_method="squash",
             subject_label="ArgoCD sync PR",
@@ -134,7 +133,7 @@ class GithubPrSharedTests(unittest.TestCase):
             target_branch="master",
             remote_url="https://x-access-token:test-token@github.com/Carasent-ASMA/asma-argocd.git",
             source_branch_name="bot/argocd-sync/master-1234567890ab",
-            title="asma-srv-auth.dev.version: 1234567.",
+            title="asma-njs-auth.dev.version: 1234567.",
             body="sync body",
             merge_method="squash",
             subject_label="ArgoCD sync PR",
@@ -160,7 +159,7 @@ class GithubPrSharedTests(unittest.TestCase):
             "carasent-asma/asma-argocd",
             "bot/argocd-sync/master-1234567890ab",
             "master",
-            "asma-srv-auth.dev.version: 1234567.",
+            "asma-njs-auth.dev.version: 1234567.",
             "sync body",
             "test-token",
             subject_label="ArgoCD sync PR",
@@ -279,7 +278,7 @@ class GithubPrSharedTests(unittest.TestCase):
             target_branch="master",
             remote_url="https://x-access-token:test-token@github.com/Carasent-ASMA/asma-argocd.git",
             source_branch_name="bot/argocd-sync/master-1234567890ab",
-            title="asma-srv-auth.dev.version: 1234567.",
+            title="asma-njs-auth.dev.version: 1234567.",
             body="sync body",
             merge_method="squash",
             subject_label="ArgoCD sync PR",
