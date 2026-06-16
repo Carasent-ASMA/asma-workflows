@@ -18,6 +18,7 @@ DOCS_RE = re.compile(r"^docs(\([^)]*\))?:")
 MERGE_PR_RE = re.compile(r"^merged in .+\(pull request #[0-9]+\)$", re.IGNORECASE)
 BULLET_PREFIX_RE = re.compile(r"^(?:[-*+]\s+|\d+\.\s+)+")
 FORCE_RELEASE_MARKER_RE = re.compile(r"(^|\s)--force-release(?:\s|$)")
+SKIP_BUILD_MARKER = "[skip build]"
 
 ANALYSIS_STRATEGY_ALL_COMMITS = "all_commits_since_last_stable_tag"
 ANALYSIS_STRATEGY_LAST_COMMIT = "last_commit_only"
@@ -192,7 +193,16 @@ def load_commit_messages(
 
 
 def determine_bump_type(commits: list[str]) -> tuple[str, bool]:
-    """Determine semantic bump severity from conventional commit subjects."""
+    """Determine semantic bump severity from conventional commit subjects.
+
+    Returns ("none", False) when the [skip build] marker is present in any
+    analysed commit message, signalling CI/CD to skip the build.
+    """
+    # Check for skip-build marker in full commit messages before analysis
+    for commit in commits:
+        if SKIP_BUILD_MARKER in commit:
+            return "none", False
+
     bump_type = "none"
     should_publish = False
 
