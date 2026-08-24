@@ -8,6 +8,8 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -283,13 +285,100 @@ def create_pointer_commit(repo_path: Path, submodule_path: str, target_sha: str)
     run_git(["git", "commit", "-m", message], cwd=repo_path)
 
 
-def push_pointer_commit(repo_path: Path, branch_name: str) -> subprocess.CompletedProcess[str]:
-    """Push the current HEAD to a deterministic bot branch."""
-    return run_git(
-        ["git", "push", "--force", "origin", f"HEAD:{branch_name}"],
-        cwd=repo_path,
-        check=False,
-    )
+PUSH_ATTEMPTS = 4
+PUSH_BACKOFF_SECONDS = (2.0, 5.0, 12.0)
+
+
+def push_pointer_commit(
+    repo_path: Path,
+    branch_name: str,
+    *,
+    attempts: int = PUSH_ATTEMPTS,
+    sleep: Callable[[float], None] = time.sleep,
+) -> subprocess.CompletedProcess[str]:
+    """Push the current HEAD to a deterministic bot branch, retrying transient failures.
+
+    This is the last job of a master release and it was the only step in the pipeline with no
+    retry: on 2026-08-17 it failed three times out of three and needed manual recovery twice
+    (ASMA-8017). The release itself is already complete by then — assets published, verified and
+    the version pointer written — so what a failure costs is the pointer commit, and asma-modules
+    silently drifts behind the submodule it tracks until somebody notices and re-runs.
+
+    The branch name embeds the caller SHA, so this force-push cannot lose a concurrent update;
+    the observed failures are transport-level, which is why a plain retry is the right shape.
+    A non-transient failure (a rejected ref, a bad credential) is returned on the first attempt
+    rather than retried, so a real error still surfaces in seconds instead of half a minute.
+    """
+    last_result: subprocess.CompletedProcess[str] | None = None
+    for attempt in range(attempts):
+        last_result = run_git(
+            ["git", "push", "--force", "origin", f"HEAD:{branch_name}"],
+            cwd=repo_path,
+            check=False,
+        )
+        if last_result.returncode == 0:
+            if attempt:
+                print(f"pointer push succeeded on attempt {attempt + 1}", flush=True)
+            return last_result
+
+        output = f"{last_result.stderr}\n{last_result.stdout}"
+        if not is_retryable_push_failure(output):
+            return last_result
+
+        if attempt == attempts - 1:
+            break
+
+        delay = PUSH_BACKOFF_SECONDS[min(attempt, len(PUSH_BACKOFF_SECONDS) - 1)]
+        print(
+            f"pointer push attempt {attempt + 1} failed transiently, retrying in {delay}s: "
+            f"{(last_result.stderr.strip() or last_result.stdout.strip())[:200]}",
+            flush=True,
+        )
+        sleep(delay)
+
+    assert last_result is not None  # the loop always runs at least once
+    return last_result
+
+
+RETRYABLE_PUSH_MARKERS = (
+    "could not read from remote repository",
+    "connection timed out",
+    "connection reset",
+    "connection refused",
+    "operation timed out",
+    "early eof",
+    "the remote end hung up unexpectedly",
+    "rpc failed",
+    "unexpected disconnect",
+    "temporary failure in name resolution",
+    "could not resolve host",
+    "ssh_exchange_identification",
+    "kex_exchange_identification",
+    "broken pipe",
+    "gnutls_handshake() failed",
+    "http/2 stream",
+    "internal server error",
+    "bad gateway",
+    "service unavailable",
+    "gateway time-out",
+    "remote end hung up",
+    "fetch first",
+    "non-fast-forward",
+    "cannot lock ref",
+    "failed to lock",
+    "reference already exists",
+)
+
+
+def is_retryable_push_failure(output: str) -> bool:
+    """Decide whether a failed push is worth another attempt.
+
+    Deliberately a marker allow-list rather than "retry everything": retrying a rejected
+    credential or a protected-branch refusal only turns a clear five-second failure into a
+    confusing thirty-second one, and the operator still has to read the same message at the end.
+    """
+    haystack = output.lower()
+    return any(marker in haystack for marker in RETRYABLE_PUSH_MARKERS)
 
 
 def ensure_branch_allows_auto_merge(
