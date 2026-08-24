@@ -538,5 +538,111 @@ class UpdateSubmodulePointerTests(unittest.TestCase):
             mock_enable_auto_merge.assert_called_once()
 
 
+class PointerPushRetryTests(unittest.TestCase):
+    """ASMA-8017: the pointer push is the last release step and had no retry."""
+
+    def setUp(self) -> None:
+        self.slept: list[float] = []
+
+    def _push(self, results: list[subprocess.CompletedProcess[str]], **kwargs):
+        with patch.object(update_submodule_pointer, "run_git", side_effect=results) as run_git:
+            outcome = update_submodule_pointer.push_pointer_commit(
+                Path("/tmp/repo"),
+                "bot/pointer",
+                sleep=self.slept.append,
+                **kwargs,
+            )
+        return outcome, run_git
+
+    @staticmethod
+    def _result(code: int, stderr: str = "") -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(["git", "push"], code, stdout="", stderr=stderr)
+
+    def test_a_clean_push_is_not_retried(self) -> None:
+        outcome, run_git = self._push([self._result(0)])
+
+        self.assertEqual(outcome.returncode, 0)
+        self.assertEqual(run_git.call_count, 1)
+        self.assertEqual(self.slept, [])
+
+    def test_a_transient_failure_is_retried_and_can_succeed(self) -> None:
+        """The 2026-08-17 shape: the push fails on the network, then works."""
+        outcome, run_git = self._push(
+            [
+                self._result(128, "ssh: connect to host github.com port 22: Connection timed out"),
+                self._result(0),
+            ]
+        )
+
+        self.assertEqual(outcome.returncode, 0)
+        self.assertEqual(run_git.call_count, 2)
+        self.assertEqual(self.slept, [update_submodule_pointer.PUSH_BACKOFF_SECONDS[0]])
+
+    def test_it_gives_up_after_the_configured_attempts(self) -> None:
+        transient = self._result(128, "fatal: the remote end hung up unexpectedly")
+        outcome, run_git = self._push([transient] * 4)
+
+        self.assertEqual(outcome.returncode, 128)
+        self.assertEqual(run_git.call_count, update_submodule_pointer.PUSH_ATTEMPTS)
+        # One sleep fewer than attempts: it does not wait after the final failure.
+        self.assertEqual(len(self.slept), update_submodule_pointer.PUSH_ATTEMPTS - 1)
+
+    def test_the_backoff_grows(self) -> None:
+        transient = self._result(128, "RPC failed; curl 92 HTTP/2 stream 5 was reset")
+        self._push([transient] * 4)
+
+        self.assertEqual(self.slept, sorted(self.slept))
+        self.assertGreater(self.slept[-1], self.slept[0])
+
+    def test_a_permanent_failure_is_not_retried(self) -> None:
+        """Retrying a rejected credential turns a 5s clear failure into a 30s confusing one."""
+        outcome, run_git = self._push(
+            [self._result(128, "remote: Permission to Carasent-ASMA/asma-modules.git denied")]
+        )
+
+        self.assertEqual(outcome.returncode, 128)
+        self.assertEqual(run_git.call_count, 1)
+        self.assertEqual(self.slept, [])
+
+    def test_a_protected_branch_refusal_is_not_retried(self) -> None:
+        outcome, run_git = self._push(
+            [self._result(1, "remote: error: GH006: Protected branch update failed")]
+        )
+
+        self.assertEqual(run_git.call_count, 1)
+        self.assertEqual(outcome.returncode, 1)
+
+
+class RetryableFailureClassificationTests(unittest.TestCase):
+    def test_transport_failures_are_retryable(self) -> None:
+        for message in (
+            "ssh: connect to host github.com port 22: Connection timed out",
+            "fatal: Could not read from remote repository.",
+            "error: RPC failed; curl 56 Recv failure: Connection reset by peer",
+            "fatal: the remote end hung up unexpectedly",
+            "kex_exchange_identification: read: Connection reset by peer",
+            "fatal: unable to access ...: The requested URL returned error: 502 Bad Gateway",
+        ):
+            self.assertTrue(
+                update_submodule_pointer.is_retryable_push_failure(message), message
+            )
+
+    def test_authorisation_and_policy_failures_are_not_retryable(self) -> None:
+        for message in (
+            "remote: Permission to Carasent-ASMA/asma-modules.git denied to bot.",
+            "remote: error: GH006: Protected branch update failed",
+            "fatal: repository 'https://github.com/nope/nope.git/' not found",
+            "error: src refspec HEAD does not match any",
+        ):
+            self.assertFalse(
+                update_submodule_pointer.is_retryable_push_failure(message), message
+            )
+
+    def test_classification_is_case_insensitive(self) -> None:
+        self.assertTrue(
+            update_submodule_pointer.is_retryable_push_failure("CONNECTION TIMED OUT")
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
