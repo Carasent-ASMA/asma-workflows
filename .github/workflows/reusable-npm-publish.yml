@@ -27,10 +27,6 @@ on:
                 required: false
             ASMA_AI_API_TOKEN:
                 required: false
-            ASMA_POINTER_SYNC_APP_ID:
-                required: false
-            ASMA_POINTER_SYNC_APP_PRIVATE_KEY:
-                required: false
 
 jobs:
     release_plan:
@@ -60,12 +56,10 @@ jobs:
                   ref: master
                   path: .github/_asma-workflows
                   sparse-checkout: |
-                      .github/actions/update-submodule-pointer
                       .github/scripts/release_gate.py
                       .github/scripts/git_tagging_ops.py
                       .github/scripts/git_tagging_plan.py
                       .github/scripts/git_tagging_shared.py
-                      .github/scripts/update_submodule_pointer.py
                       .github/scripts/npm_publish
 
             - name: Validate package name
@@ -228,53 +222,12 @@ jobs:
               if: inputs.publish_npm == true
               run: npm publish --provenance --access public
 
-    update_submodule_pointer:
-        name: Update asma-modules Pointer
-        needs:
-            - release_plan
-            - build
-            - publish_release
-        if: >-
-            always() &&
-            github.ref == 'refs/heads/master' &&
-            contains(fromJSON('["success","skipped"]'), needs.release_plan.result) &&
-            contains(fromJSON('["success","skipped"]'), needs.build.result) &&
-            contains(fromJSON('["success","skipped"]'), needs.publish_release.result)
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout caller repository
-              uses: actions/checkout@v6
-              with:
-                  ref: ${{ github.sha }}
-                  fetch-depth: 0
-
-            - name: Checkout shared pointer action
-              uses: actions/checkout@v6
-              with:
-                  repository: Carasent-ASMA/asma-workflows
-                  ref: master
-                  path: .github/_asma-workflows-action
-                  sparse-checkout: |
-                      .github/actions/update-submodule-pointer
-                      .github/scripts/update_submodule_pointer.py
-                      .github/scripts/github_pr_shared.py
-
-            - name: Update asma-modules pointer
-              uses: ./.github/_asma-workflows-action/.github/actions/update-submodule-pointer
-              with:
-                  github-app-id: ${{ secrets.ASMA_POINTER_SYNC_APP_ID }}
-                  github-app-private-key: ${{ secrets.ASMA_POINTER_SYNC_APP_PRIVATE_KEY }}
-                  caller-repository: ${{ github.repository }}
-                  caller-sha: ${{ github.sha }}
-                  caller-ref-name: ${{ github.ref_name }}
-
     build_summary:
         name: Build Summary
         needs:
             - release_plan
             - build
             - publish_release
-            - update_submodule_pointer
         if: always()
         runs-on: ubuntu-latest
         permissions:

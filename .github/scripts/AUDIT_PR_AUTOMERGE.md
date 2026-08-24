@@ -4,7 +4,6 @@
 
 This audit covers the automation for protected-branch PR creation and automerge in:
 
-- `shared/asma-workflows/.github/scripts/update_submodule_pointer.py` for pointer updates
 - `infrastructure/asma-infrastructure/.github/scripts/deploy/argocd_deploy.py` for ArgoCD updates
 - `shared/asma-workflows/.github/scripts/github_pr_shared.py` for shared PR helpers
 
