@@ -1,0 +1,469 @@
+{
+  "catalog_module": "shared/asma-workflows",
+  "generated": {
+    ".agents/skills/asma-ui-components/SKILL.md": {
+      "sha256": "1299bfaeb409be595ccc8b040551fc0e04a196388e2470e6ed36d55e808d4865",
+      "source": ".github/skills/asma-ui-components/SKILL.md",
+      "source_sha256": "0e2888dc9d1806cc61c97aba97bf42f88cdd0986934a99a1498eca7b8ffe1ddf"
+    },
+    ".agents/skills/chrome-devtools/SKILL.md": {
+      "sha256": "79fb50648192aa76dcf9057502ecdecbc9c00a2adc1c1def8d0093256de90bae",
+      "source": ".github/skills/chrome-devtools/SKILL.md",
+      "source_sha256": "dacfe10e758a8d70881a2a6d6c118a2b45900d199ef5a2935c87074d21c4418e"
+    },
+    ".agents/skills/ci-cd-helper/SKILL.md": {
+      "sha256": "6b68f8e3c9a2b6cfbff5fa263783872f2fea3e16b1d783614d4cbef948a16e46",
+      "source": ".github/skills/ci-cd-helper/SKILL.md",
+      "source_sha256": "c203b2ae10ec9918d085beb238bbca01c44c96bf74abf25e0ea29c8d620b10df"
+    },
+    ".agents/skills/coding-skills/SKILL.md": {
+      "sha256": "9bf3da855c931e897bb215655cf2efdbcdedbeb26e0988cdf2f161ead52fcf8e",
+      "source": ".github/skills/coding-skills/SKILL.md",
+      "source_sha256": "84d5bfde8e8832a812d6c876aefe230bfa82f2145818a36bcb445680031c8f60"
+    },
+    ".agents/skills/create-architectural-decision-record/SKILL.md": {
+      "sha256": "e0d71ddcf66d022696a3c242165678c625487beda55e28eb6433e41fbd29cbdf",
+      "source": ".github/skills/create-architectural-decision-record/SKILL.md",
+      "source_sha256": "c4de9246795dc36ce3d6a2079d81845b72f84aefae9fb0035e6cec4c31806734"
+    },
+    ".agents/skills/create-github-action-workflow-specification/SKILL.md": {
+      "sha256": "2c0fcdc4ba4fd033348182aaf466193c0526ab91fd97af95849240a79112f2f7",
+      "source": ".github/skills/create-github-action-workflow-specification/SKILL.md",
+      "source_sha256": "4bad1ea62222beb751a65d74e3051dcbe6f770bee1b9b5be91272e89a012743d"
+    },
+    ".agents/skills/create-implementation-plan/SKILL.md": {
+      "sha256": "29a4cc2bc9f259e07b6ca4bbcfdc3d389fc7b850c341009350a92f919629d80d",
+      "source": ".github/skills/create-implementation-plan/SKILL.md",
+      "source_sha256": "b4f8c43af5457a7e41dc6fcfbaf55e0ab466791ce13f45ffd103da48796676ff"
+    },
+    ".agents/skills/create-implementation-plan/assets/plan-template.md": {
+      "sha256": "8efbfc2c60f74673b81c52cde32d6ebf5e73851000c37165ee2f98bb5ca2b957",
+      "source": ".github/skills/create-implementation-plan/assets/plan-template.md",
+      "source_sha256": "b9b368d5ef566df37e6e524559c340e237d05a2318b1143024bfb18cfc070c88"
+    },
+    ".agents/skills/create-implementation-plan/references/behaviour-scenarios-opt-in-trial.md": {
+      "sha256": "1545a598b3bf213f17c3149400b4eb623b61c77bb0eb6b7f9746848018de76b8",
+      "source": ".github/skills/create-implementation-plan/references/behaviour-scenarios-opt-in-trial.md",
+      "source_sha256": "814331e0d7f37726e9af1a0c901d2b3e582d2665ea0e7270f5d0077695007590"
+    },
+    ".agents/skills/create-implementation-plan/references/delivery-milestones-and-adoption.md": {
+      "sha256": "ade4c6017dca35da766dcc5603724a0d490cee728dbb9de708e14f4ac57da7d4",
+      "source": ".github/skills/create-implementation-plan/references/delivery-milestones-and-adoption.md",
+      "source_sha256": "fde72889b2cf66e17893dce1cc8b805d10c6c45895f8422a5ec3cc9777be9751"
+    },
+    ".agents/skills/create-implementation-plan/references/plan-graph-contract.md": {
+      "sha256": "1325c509cea78be8928751784f92348c31063ad711206170bfff34eb27b37d92",
+      "source": ".github/skills/create-implementation-plan/references/plan-graph-contract.md",
+      "source_sha256": "78b3902663903c6b4ddf97573ab82b0601590a5d14a4c10c61a605d4d3071a11"
+    },
+    ".agents/skills/create-readme/SKILL.md": {
+      "sha256": "8fef5e7106c833363e2e24d06ebfe42bbe09e840380cc4f1e76f004c320f16af",
+      "source": ".github/skills/create-readme/SKILL.md",
+      "source_sha256": "fbf2bb1a514622df57941440ea83b0eb5c811cc6212de37781f6277e79db7a2a"
+    },
+    ".agents/skills/create-specification/SKILL.md": {
+      "sha256": "a0383326fa78942e0045eaf9ff2c68ff4226afb881edea8785d750c542601457",
+      "source": ".github/skills/create-specification/SKILL.md",
+      "source_sha256": "34b473cd1415b17c23818519ee848f901ff994f4d44da67816f770d79341c374"
+    },
+    ".agents/skills/create-technical-spike/SKILL.md": {
+      "sha256": "a3301e28cad227a12cc1aacc46828ab51095577821e586dcd1c94876ff32a72c",
+      "source": ".github/skills/create-technical-spike/SKILL.md",
+      "source_sha256": "0aaa29bb4798794b99d2294b71a287c065181a691eec7b5e261bb9d78ac4041d"
+    },
+    ".agents/skills/dependency-sync/SKILL.md": {
+      "sha256": "7c9f828a811d0a3eb8c8fa805fcae2e487bfe394987505de196a9ae9f62fbf16",
+      "source": ".github/skills/dependency-sync/SKILL.md",
+      "source_sha256": "545d68afa9e1021944d794bb88af1caa2388e3f4c9981a67c6a3358cc0808f7b"
+    },
+    ".agents/skills/doc-gen/SKILL.md": {
+      "sha256": "4b107aec84206aa8fefb44f5e669d88b7b410e44d7fe5e3720ad714a7dec03e1",
+      "source": ".github/skills/doc-gen/SKILL.md",
+      "source_sha256": "4e916750658d33731fac138851296d70ed1e06311282aca290752a091de473b4"
+    },
+    ".agents/skills/lint-fix/SKILL.md": {
+      "sha256": "ac54160a2f0fb2046cbd118ff412656a93ab2d4391f7494f3f1067c6de7a9fb2",
+      "source": ".github/skills/lint-fix/SKILL.md",
+      "source_sha256": "3bc6744e47dd489f9c1583b1b902621d51c7624d98265839e206088760bee3b6"
+    },
+    ".agents/skills/migration-assistant/SKILL.md": {
+      "sha256": "89fa989a73480a0bf5e62f0d80335390a2d11bf21f1804fa7ad4c03a625dc5bf",
+      "source": ".github/skills/migration-assistant/SKILL.md",
+      "source_sha256": "4a8be2a91d215ca33ef7c960232db7d0968a29d511fd5039822929f19f83307d"
+    },
+    ".agents/skills/onboarding-helper/SKILL.md": {
+      "sha256": "e86e20dbc984c2822a44018d003baf567d82bec007a7c33c48629a50280ee927",
+      "source": ".github/skills/onboarding-helper/SKILL.md",
+      "source_sha256": "2411df3cd271459c398022835c0fd3bd5226c5a1b745827944dc01d422754e4a"
+    },
+    ".agents/skills/performance-audit/SKILL.md": {
+      "sha256": "8e85126e7cadbfd9e742c875dc984c5ad0aeead97b1e8943dc6af5b1e0d1a3d7",
+      "source": ".github/skills/performance-audit/SKILL.md",
+      "source_sha256": "02661c540a72be3eb6a06ae2cc13a311f7ed7171cfc571886df971a46209c93b"
+    },
+    ".agents/skills/postgresql-code-review/SKILL.md": {
+      "sha256": "76286a50b2dc8f8dda9e3f76a1945e3365782988eb8c6b62160728a54fdb7887",
+      "source": ".github/skills/postgresql-code-review/SKILL.md",
+      "source_sha256": "1314e0d88bad3f450477fc897b42c4c3156180e2d2570422f29bcb787ff201f0"
+    },
+    ".agents/skills/postgresql-optimization/SKILL.md": {
+      "sha256": "241f9f772707100a108b0984b4ff3302c6b8b0af9b43c23a985773af1ad4612e",
+      "source": ".github/skills/postgresql-optimization/SKILL.md",
+      "source_sha256": "9b511a7d706302761a7700cd6b87df9793650fa7f7f3299fe33243fc339e3c9f"
+    },
+    ".agents/skills/prompt-builder/SKILL.md": {
+      "sha256": "1b18d4a911ba1b9fe932f3164978e4dc4f616cba548711cdbb811ed077d7c69f",
+      "source": ".github/skills/prompt-builder/SKILL.md",
+      "source_sha256": "b764535600f768fcdb1f31b46f8d72bd9e549d7919e2f452092baf6d19f70f60"
+    },
+    ".agents/skills/pytest-coverage/SKILL.md": {
+      "sha256": "9c6c2d909d9ff43f1134ceba9529e4bd3ad1aece21bebb0731a363e2bc70db6b",
+      "source": ".github/skills/pytest-coverage/SKILL.md",
+      "source_sha256": "8e81584a6a1ccf4e505f4e3d25ba309eaa52c44b3c5e831ec66a9d55d3b795a7"
+    },
+    ".agents/skills/quasi-coder/SKILL.md": {
+      "sha256": "b41410bac7d958b84596580048b00e4d7c7235d383474fecb7cbd2858cd721c8",
+      "source": ".github/skills/quasi-coder/SKILL.md",
+      "source_sha256": "4464daa9fde19faecd27ea1dbdfda80b32a41e67c482fd024623e82acfa9d258"
+    },
+    ".agents/skills/refactor-method-complexity-reduce/SKILL.md": {
+      "sha256": "e1e3eb73e922148c80c99191f7348dfa29835750a39c3460c309651d3ead5aa0",
+      "source": ".github/skills/refactor-method-complexity-reduce/SKILL.md",
+      "source_sha256": "953ded9721b51bc240af4df1714732f69302796224a0bafb548c9aeff3e3bf71"
+    },
+    ".agents/skills/refactor-plan/SKILL.md": {
+      "sha256": "6c0b36aa4b3a36f6244865e2ae978b74051ac7cf6d81a762e4608d6968b73286",
+      "source": ".github/skills/refactor-plan/SKILL.md",
+      "source_sha256": "a9e5acc982381f23c7fb1ef1c3098a058d577d6d417803ec8415b6ea89c689cd"
+    },
+    ".agents/skills/release-manager/SKILL.md": {
+      "sha256": "3264a81c4be2963738bde1bd5eba82dd00a621a62677799039b85079517a5256",
+      "source": ".github/skills/release-manager/SKILL.md",
+      "source_sha256": "48d8fcaaf5448fdd5a460cab67413596328ea3ac8b7c2b21785f75291cbaae04"
+    },
+    ".agents/skills/remember/SKILL.md": {
+      "sha256": "a2c22dfcf115956812b08d2edea76016a4a237582b1e3c750dc49cfe2ffd2e74",
+      "source": ".github/skills/remember/SKILL.md",
+      "source_sha256": "047d2391545a5cf83ef88b300d322ca77b10ca3a251afd8d12d0d61996d39470"
+    },
+    ".agents/skills/security-check/SKILL.md": {
+      "sha256": "96ae0f180f88d50b5c31d82a4e270a0498d18b4dad60104a56f85a9620d0ea7f",
+      "source": ".github/skills/security-check/SKILL.md",
+      "source_sha256": "d3223fa2ed14d641f01447d6195d5380981f3f0ee51bcead9e8842d8b0c8a40e"
+    },
+    ".agents/skills/suggest-awesome-github-copilot-agents/SKILL.md": {
+      "sha256": "ddbc9957e066920669d42b96522ca46504c5eed5f90b5f4da737fd4f04288988",
+      "source": ".github/skills/suggest-awesome-github-copilot-agents/SKILL.md",
+      "source_sha256": "32bdbb64eee456badc060025cf2c114cb72ee7bce7e05e1a903a11fee710b1fe"
+    },
+    ".agents/skills/suggest-awesome-github-copilot-instructions/SKILL.md": {
+      "sha256": "9f70cca06d0ac09dfdcaa115015b48db5cf55ae372901b8236a4990fa17b1b3b",
+      "source": ".github/skills/suggest-awesome-github-copilot-instructions/SKILL.md",
+      "source_sha256": "e66c1501fea6fc913b36f176deeb1e2ac1a908ec18cdb8e4a186f957301a0a2e"
+    },
+    ".agents/skills/suggest-awesome-github-copilot-prompts/SKILL.md": {
+      "sha256": "3d97ff0b7b9aa9023644d65b11883de289487883fbb778b42fa1a3565820e05e",
+      "source": ".github/skills/suggest-awesome-github-copilot-prompts/SKILL.md",
+      "source_sha256": "4963834dec4cfe32214f130a5021c1bb241a2e0c688d8e9a6bbf48144ca707cb"
+    },
+    ".agents/skills/suggest-awesome-github-copilot-skills/SKILL.md": {
+      "sha256": "398f037561697a0868491d8442b0c619f2c9022f9af5f7cd6038f5641ea8052e",
+      "source": ".github/skills/suggest-awesome-github-copilot-skills/SKILL.md",
+      "source_sha256": "ed12cfeb9829a116b0f81147e641852d5c0127f8bbcdc633c3bfada4aba25f0f"
+    },
+    ".agents/skills/test-gen/SKILL.md": {
+      "sha256": "6f0fb0de008cc54d7012139d8e593c71c744432617a780c522a633ea8c919f83",
+      "source": ".github/skills/test-gen/SKILL.md",
+      "source_sha256": "9c2b665d4007a6921d4651cd37e9811c1f91b6ea8eedf760e03bb2fcbfd4616d"
+    },
+    ".github/agents/api-architect.agent.md": {
+      "sha256": "dd26b3da961a70a7971eff8a98ff5dfa359a0a3d977a413511e4d0a15942cb9b",
+      "source": ".github/agents/api-architect.agent.md",
+      "source_sha256": "228d1050a9c18a115fbcbf6f2674aec4ea9893014f1d16e3874596b227e2164c"
+    },
+    ".github/agents/context-archtect.agent.md": {
+      "sha256": "31c1a7832412aac3f255f6342dc40c025be980d04b5df7f5492c8e92816a360f",
+      "source": ".github/agents/context-archtect.agent.md",
+      "source_sha256": "a7b239aa16fd6541e85adce398f45f1e97f0c0d81737dd27e3c8b53b3052b9bd"
+    },
+    ".github/agents/debug-assistant.agent.md": {
+      "sha256": "b344991c33993799351683573a072ae52804658d48db1e6efd121ca48be11d42",
+      "source": ".github/agents/debug-assistant.agent.md",
+      "source_sha256": "b7ac2422fb68d2c87b329efd86c176237f0195de8bce9cb6bed2042dbeb79c9b"
+    },
+    ".github/agents/devils-advocate.agent.md": {
+      "sha256": "eade5ba992da146c0b2a07f89c043b472eb56b5eae6b94eadf195a20ad4b06e4",
+      "source": ".github/agents/devils-advocate.agent.md",
+      "source_sha256": "bd561fbebb08dea0088ea8980d58c9399c854094b0df14e013f404c097b3169f"
+    },
+    ".github/agents/frontend-expert.agent.md": {
+      "sha256": "ff49e0619e6d6cb2b7cf2302465b72a99045d063ddf93a54975395c43f395aa8",
+      "source": ".github/agents/frontend-expert.agent.md",
+      "source_sha256": "b60fd7838be8d6d461d0323424de9dab56a4475afc8c3486e0ce8baed8e848e3"
+    },
+    ".github/agents/mcp-expert.agent.md": {
+      "sha256": "49d06f993c69ab329a252f5c4ff50bb02cc13539b14811700ca185d7e2b99267",
+      "source": ".github/agents/mcp-expert.agent.md",
+      "source_sha256": "d1656258a20cfa7c33158cfd54824669c46936541af8e0e605a12e6eef2de72d"
+    },
+    ".github/agents/repo-architect.agent.md": {
+      "sha256": "53853289fbe10b04c900c5a7bc9b042be9452280597c8c7d526bce14521f7d09",
+      "source": ".github/agents/repo-architect.agent.md",
+      "source_sha256": "2419662b980b8575a0a501f93d43992472e94e22a8614764775d485a9d1aa0a3"
+    },
+    ".github/agents/tdd-refactor.agent.md": {
+      "sha256": "63cfa603713fe777e683b68e2dc5795b79d6cb78816719c253479da62e3d3aaa",
+      "source": ".github/agents/tdd-refactor.agent.md",
+      "source_sha256": "10f30828a48bd4a3c42d47fa6bfb7a4259431ab33ffcc54c7619510a274cd527"
+    },
+    ".github/agents/vscode-tour-expert.agent.md": {
+      "sha256": "d666591b2fd0e7ad38f11895b0611a24bacae78eca38d72cabae67fe31486edf",
+      "source": ".github/agents/vscode-tour-expert.agent.md",
+      "source_sha256": "a4e075f903ada958b08a1c415c565563d87a65e6eba1ccb746867a6035f5404f"
+    },
+    ".github/instructions/asma-cli.instructions.md": {
+      "sha256": "854ed24351426aa75914db03edd2662fa358ce9aaf7903ddfd35313729b5e2ad",
+      "source": ".github/instructions/asma-cli.instructions.md",
+      "source_sha256": "266ad380ecd7addc2727510c0c407507f928b9651c8da694fe532893c65db346"
+    },
+    ".github/instructions/coding-standards.instructions.md": {
+      "sha256": "1e6e65e4478692a9b3b3ddf9328a898d181f195fdc250074ed7eb44643e32ab7",
+      "source": ".github/instructions/coding-standards.instructions.md",
+      "source_sha256": "f4221706f035cc67993a818f8a41d0bde8a9a8d11080379742bef1170a082585"
+    },
+    ".github/instructions/development-workflow.instructions.md": {
+      "sha256": "d2bcc6da7c820834fb0fe5ce76fa57391d0c1f7630dc4f149bce1bf198812db8",
+      "source": ".github/instructions/development-workflow.instructions.md",
+      "source_sha256": "b32a1350bd893691493e04f2b62f0256833ab80965ed8b739f029dc410ce62c8"
+    },
+    ".github/instructions/infrastructure.instructions.md": {
+      "sha256": "5ace4549a71038236ebf44f5449b7c37730a01a5203104ae8346aafaf6af66d5",
+      "source": ".github/instructions/infrastructure.instructions.md",
+      "source_sha256": "32e9479664c93b00f15d362264ef772df3e01edfa18f6ea000abd93f865dbe97"
+    },
+    ".github/instructions/markdown.instructions.md": {
+      "sha256": "f1f07215f120a97a20473a18d4f94a5154c0e678bf3aba2f1b5bb71e432c3a90",
+      "source": ".github/instructions/markdown.instructions.md",
+      "source_sha256": "ab8e06bff6eea0b8cbd20ebbfca9e9d58f51231d95aede7beb332ee8cb19ba8e"
+    },
+    ".github/instructions/playwright-typescript.instructions.md": {
+      "sha256": "4fd190ec3ee34510ac7b9088e3b61b20870370d2e2f7a30c7af273a3bbda197f",
+      "source": ".github/instructions/playwright-typescript.instructions.md",
+      "source_sha256": "393087f44d8508ad432ab7813d69bd08aa15c94dfc846912b544e426cc1afcf7"
+    },
+    ".github/instructions/python.instructions.md": {
+      "sha256": "82706b3e9fbd748ccc2ae9b7846c200644e392c58e0a33a566ea1952e4da5cf6",
+      "source": ".github/instructions/python.instructions.md",
+      "source_sha256": "12c22d32f5659142475b84c6e6dd09cf628e5d6a8fa6d71e31b4c44775fe12e1"
+    },
+    ".github/instructions/shared-libs.instructions.md": {
+      "sha256": "d1ce3829c446db85a7614ca2f0bad3988f1464460408174e1ace50bd5ad178e0",
+      "source": ".github/instructions/shared-libs.instructions.md",
+      "source_sha256": "9f62cae58138238bf487a1e8cdab91d11f66b26aeae0af9a10cbeb385a8a63b7"
+    },
+    ".github/instructions/yaml.instructions.md": {
+      "sha256": "e82deba58e3e7d57e0e555fcd349232d0789a565183d7a6419a1d61a2ee95135",
+      "source": ".github/instructions/yaml.instructions.md",
+      "source_sha256": "c5da41ad51767e4b8ed957606c7be4beabbfde060d35546042a21c8e2de9e575"
+    },
+    ".github/prompts/commit-message.prompt.md": {
+      "sha256": "09a61a135dedef6f4c633bc55d1aae7af64f6253aa5e91a3b24f283edfba3e2f",
+      "source": ".github/prompts/commit-message.prompt.md",
+      "source_sha256": "e4bd194fc0805cf9b5fd8a5257e0fd31885241ffdc2de9dd8905c9b7d66da4d4"
+    },
+    ".github/prompts/new-shared-lib.prompt.md": {
+      "sha256": "8c53a4c94e2c14abd35a4ca3cc30e2835e645705df99b1fc32fc07c078c45132",
+      "source": ".github/prompts/new-shared-lib.prompt.md",
+      "source_sha256": "673ab093013d8dfe330183c52592e51e10fe75627d89d4fd8f3ac9b2fcce15ca"
+    },
+    ".github/prompts/new-widget.prompt.md": {
+      "sha256": "aafd0d1d11352c16808b0eb38a64ff1ef14e68335f4c0bdb9f211256110ded87",
+      "source": ".github/prompts/new-widget.prompt.md",
+      "source_sha256": "3ac3097273e796627f487d6c98e117b4792753ac881bbb8c47acebec893b3281"
+    },
+    ".github/skills/asma-ui-components/SKILL.md": {
+      "sha256": "1299bfaeb409be595ccc8b040551fc0e04a196388e2470e6ed36d55e808d4865",
+      "source": ".github/skills/asma-ui-components/SKILL.md",
+      "source_sha256": "0e2888dc9d1806cc61c97aba97bf42f88cdd0986934a99a1498eca7b8ffe1ddf"
+    },
+    ".github/skills/chrome-devtools/SKILL.md": {
+      "sha256": "79fb50648192aa76dcf9057502ecdecbc9c00a2adc1c1def8d0093256de90bae",
+      "source": ".github/skills/chrome-devtools/SKILL.md",
+      "source_sha256": "dacfe10e758a8d70881a2a6d6c118a2b45900d199ef5a2935c87074d21c4418e"
+    },
+    ".github/skills/ci-cd-helper/SKILL.md": {
+      "sha256": "6b68f8e3c9a2b6cfbff5fa263783872f2fea3e16b1d783614d4cbef948a16e46",
+      "source": ".github/skills/ci-cd-helper/SKILL.md",
+      "source_sha256": "c203b2ae10ec9918d085beb238bbca01c44c96bf74abf25e0ea29c8d620b10df"
+    },
+    ".github/skills/coding-skills/SKILL.md": {
+      "sha256": "9bf3da855c931e897bb215655cf2efdbcdedbeb26e0988cdf2f161ead52fcf8e",
+      "source": ".github/skills/coding-skills/SKILL.md",
+      "source_sha256": "84d5bfde8e8832a812d6c876aefe230bfa82f2145818a36bcb445680031c8f60"
+    },
+    ".github/skills/create-architectural-decision-record/SKILL.md": {
+      "sha256": "e0d71ddcf66d022696a3c242165678c625487beda55e28eb6433e41fbd29cbdf",
+      "source": ".github/skills/create-architectural-decision-record/SKILL.md",
+      "source_sha256": "c4de9246795dc36ce3d6a2079d81845b72f84aefae9fb0035e6cec4c31806734"
+    },
+    ".github/skills/create-github-action-workflow-specification/SKILL.md": {
+      "sha256": "2c0fcdc4ba4fd033348182aaf466193c0526ab91fd97af95849240a79112f2f7",
+      "source": ".github/skills/create-github-action-workflow-specification/SKILL.md",
+      "source_sha256": "4bad1ea62222beb751a65d74e3051dcbe6f770bee1b9b5be91272e89a012743d"
+    },
+    ".github/skills/create-implementation-plan/SKILL.md": {
+      "sha256": "29a4cc2bc9f259e07b6ca4bbcfdc3d389fc7b850c341009350a92f919629d80d",
+      "source": ".github/skills/create-implementation-plan/SKILL.md",
+      "source_sha256": "b4f8c43af5457a7e41dc6fcfbaf55e0ab466791ce13f45ffd103da48796676ff"
+    },
+    ".github/skills/create-implementation-plan/assets/plan-template.md": {
+      "sha256": "8efbfc2c60f74673b81c52cde32d6ebf5e73851000c37165ee2f98bb5ca2b957",
+      "source": ".github/skills/create-implementation-plan/assets/plan-template.md",
+      "source_sha256": "b9b368d5ef566df37e6e524559c340e237d05a2318b1143024bfb18cfc070c88"
+    },
+    ".github/skills/create-implementation-plan/references/behaviour-scenarios-opt-in-trial.md": {
+      "sha256": "1545a598b3bf213f17c3149400b4eb623b61c77bb0eb6b7f9746848018de76b8",
+      "source": ".github/skills/create-implementation-plan/references/behaviour-scenarios-opt-in-trial.md",
+      "source_sha256": "814331e0d7f37726e9af1a0c901d2b3e582d2665ea0e7270f5d0077695007590"
+    },
+    ".github/skills/create-implementation-plan/references/delivery-milestones-and-adoption.md": {
+      "sha256": "ade4c6017dca35da766dcc5603724a0d490cee728dbb9de708e14f4ac57da7d4",
+      "source": ".github/skills/create-implementation-plan/references/delivery-milestones-and-adoption.md",
+      "source_sha256": "fde72889b2cf66e17893dce1cc8b805d10c6c45895f8422a5ec3cc9777be9751"
+    },
+    ".github/skills/create-implementation-plan/references/plan-graph-contract.md": {
+      "sha256": "1325c509cea78be8928751784f92348c31063ad711206170bfff34eb27b37d92",
+      "source": ".github/skills/create-implementation-plan/references/plan-graph-contract.md",
+      "source_sha256": "78b3902663903c6b4ddf97573ab82b0601590a5d14a4c10c61a605d4d3071a11"
+    },
+    ".github/skills/create-readme/SKILL.md": {
+      "sha256": "8fef5e7106c833363e2e24d06ebfe42bbe09e840380cc4f1e76f004c320f16af",
+      "source": ".github/skills/create-readme/SKILL.md",
+      "source_sha256": "fbf2bb1a514622df57941440ea83b0eb5c811cc6212de37781f6277e79db7a2a"
+    },
+    ".github/skills/create-specification/SKILL.md": {
+      "sha256": "a0383326fa78942e0045eaf9ff2c68ff4226afb881edea8785d750c542601457",
+      "source": ".github/skills/create-specification/SKILL.md",
+      "source_sha256": "34b473cd1415b17c23818519ee848f901ff994f4d44da67816f770d79341c374"
+    },
+    ".github/skills/create-technical-spike/SKILL.md": {
+      "sha256": "a3301e28cad227a12cc1aacc46828ab51095577821e586dcd1c94876ff32a72c",
+      "source": ".github/skills/create-technical-spike/SKILL.md",
+      "source_sha256": "0aaa29bb4798794b99d2294b71a287c065181a691eec7b5e261bb9d78ac4041d"
+    },
+    ".github/skills/dependency-sync/SKILL.md": {
+      "sha256": "7c9f828a811d0a3eb8c8fa805fcae2e487bfe394987505de196a9ae9f62fbf16",
+      "source": ".github/skills/dependency-sync/SKILL.md",
+      "source_sha256": "545d68afa9e1021944d794bb88af1caa2388e3f4c9981a67c6a3358cc0808f7b"
+    },
+    ".github/skills/doc-gen/SKILL.md": {
+      "sha256": "4b107aec84206aa8fefb44f5e669d88b7b410e44d7fe5e3720ad714a7dec03e1",
+      "source": ".github/skills/doc-gen/SKILL.md",
+      "source_sha256": "4e916750658d33731fac138851296d70ed1e06311282aca290752a091de473b4"
+    },
+    ".github/skills/lint-fix/SKILL.md": {
+      "sha256": "ac54160a2f0fb2046cbd118ff412656a93ab2d4391f7494f3f1067c6de7a9fb2",
+      "source": ".github/skills/lint-fix/SKILL.md",
+      "source_sha256": "3bc6744e47dd489f9c1583b1b902621d51c7624d98265839e206088760bee3b6"
+    },
+    ".github/skills/migration-assistant/SKILL.md": {
+      "sha256": "89fa989a73480a0bf5e62f0d80335390a2d11bf21f1804fa7ad4c03a625dc5bf",
+      "source": ".github/skills/migration-assistant/SKILL.md",
+      "source_sha256": "4a8be2a91d215ca33ef7c960232db7d0968a29d511fd5039822929f19f83307d"
+    },
+    ".github/skills/onboarding-helper/SKILL.md": {
+      "sha256": "e86e20dbc984c2822a44018d003baf567d82bec007a7c33c48629a50280ee927",
+      "source": ".github/skills/onboarding-helper/SKILL.md",
+      "source_sha256": "2411df3cd271459c398022835c0fd3bd5226c5a1b745827944dc01d422754e4a"
+    },
+    ".github/skills/performance-audit/SKILL.md": {
+      "sha256": "8e85126e7cadbfd9e742c875dc984c5ad0aeead97b1e8943dc6af5b1e0d1a3d7",
+      "source": ".github/skills/performance-audit/SKILL.md",
+      "source_sha256": "02661c540a72be3eb6a06ae2cc13a311f7ed7171cfc571886df971a46209c93b"
+    },
+    ".github/skills/postgresql-code-review/SKILL.md": {
+      "sha256": "76286a50b2dc8f8dda9e3f76a1945e3365782988eb8c6b62160728a54fdb7887",
+      "source": ".github/skills/postgresql-code-review/SKILL.md",
+      "source_sha256": "1314e0d88bad3f450477fc897b42c4c3156180e2d2570422f29bcb787ff201f0"
+    },
+    ".github/skills/postgresql-optimization/SKILL.md": {
+      "sha256": "241f9f772707100a108b0984b4ff3302c6b8b0af9b43c23a985773af1ad4612e",
+      "source": ".github/skills/postgresql-optimization/SKILL.md",
+      "source_sha256": "9b511a7d706302761a7700cd6b87df9793650fa7f7f3299fe33243fc339e3c9f"
+    },
+    ".github/skills/prompt-builder/SKILL.md": {
+      "sha256": "1b18d4a911ba1b9fe932f3164978e4dc4f616cba548711cdbb811ed077d7c69f",
+      "source": ".github/skills/prompt-builder/SKILL.md",
+      "source_sha256": "b764535600f768fcdb1f31b46f8d72bd9e549d7919e2f452092baf6d19f70f60"
+    },
+    ".github/skills/pytest-coverage/SKILL.md": {
+      "sha256": "9c6c2d909d9ff43f1134ceba9529e4bd3ad1aece21bebb0731a363e2bc70db6b",
+      "source": ".github/skills/pytest-coverage/SKILL.md",
+      "source_sha256": "8e81584a6a1ccf4e505f4e3d25ba309eaa52c44b3c5e831ec66a9d55d3b795a7"
+    },
+    ".github/skills/quasi-coder/SKILL.md": {
+      "sha256": "b41410bac7d958b84596580048b00e4d7c7235d383474fecb7cbd2858cd721c8",
+      "source": ".github/skills/quasi-coder/SKILL.md",
+      "source_sha256": "4464daa9fde19faecd27ea1dbdfda80b32a41e67c482fd024623e82acfa9d258"
+    },
+    ".github/skills/refactor-method-complexity-reduce/SKILL.md": {
+      "sha256": "e1e3eb73e922148c80c99191f7348dfa29835750a39c3460c309651d3ead5aa0",
+      "source": ".github/skills/refactor-method-complexity-reduce/SKILL.md",
+      "source_sha256": "953ded9721b51bc240af4df1714732f69302796224a0bafb548c9aeff3e3bf71"
+    },
+    ".github/skills/refactor-plan/SKILL.md": {
+      "sha256": "6c0b36aa4b3a36f6244865e2ae978b74051ac7cf6d81a762e4608d6968b73286",
+      "source": ".github/skills/refactor-plan/SKILL.md",
+      "source_sha256": "a9e5acc982381f23c7fb1ef1c3098a058d577d6d417803ec8415b6ea89c689cd"
+    },
+    ".github/skills/release-manager/SKILL.md": {
+      "sha256": "3264a81c4be2963738bde1bd5eba82dd00a621a62677799039b85079517a5256",
+      "source": ".github/skills/release-manager/SKILL.md",
+      "source_sha256": "48d8fcaaf5448fdd5a460cab67413596328ea3ac8b7c2b21785f75291cbaae04"
+    },
+    ".github/skills/remember/SKILL.md": {
+      "sha256": "a2c22dfcf115956812b08d2edea76016a4a237582b1e3c750dc49cfe2ffd2e74",
+      "source": ".github/skills/remember/SKILL.md",
+      "source_sha256": "047d2391545a5cf83ef88b300d322ca77b10ca3a251afd8d12d0d61996d39470"
+    },
+    ".github/skills/security-check/SKILL.md": {
+      "sha256": "96ae0f180f88d50b5c31d82a4e270a0498d18b4dad60104a56f85a9620d0ea7f",
+      "source": ".github/skills/security-check/SKILL.md",
+      "source_sha256": "d3223fa2ed14d641f01447d6195d5380981f3f0ee51bcead9e8842d8b0c8a40e"
+    },
+    ".github/skills/suggest-awesome-github-copilot-agents/SKILL.md": {
+      "sha256": "ddbc9957e066920669d42b96522ca46504c5eed5f90b5f4da737fd4f04288988",
+      "source": ".github/skills/suggest-awesome-github-copilot-agents/SKILL.md",
+      "source_sha256": "32bdbb64eee456badc060025cf2c114cb72ee7bce7e05e1a903a11fee710b1fe"
+    },
+    ".github/skills/suggest-awesome-github-copilot-instructions/SKILL.md": {
+      "sha256": "9f70cca06d0ac09dfdcaa115015b48db5cf55ae372901b8236a4990fa17b1b3b",
+      "source": ".github/skills/suggest-awesome-github-copilot-instructions/SKILL.md",
+      "source_sha256": "e66c1501fea6fc913b36f176deeb1e2ac1a908ec18cdb8e4a186f957301a0a2e"
+    },
+    ".github/skills/suggest-awesome-github-copilot-prompts/SKILL.md": {
+      "sha256": "3d97ff0b7b9aa9023644d65b11883de289487883fbb778b42fa1a3565820e05e",
+      "source": ".github/skills/suggest-awesome-github-copilot-prompts/SKILL.md",
+      "source_sha256": "4963834dec4cfe32214f130a5021c1bb241a2e0c688d8e9a6bbf48144ca707cb"
+    },
+    ".github/skills/suggest-awesome-github-copilot-skills/SKILL.md": {
+      "sha256": "398f037561697a0868491d8442b0c619f2c9022f9af5f7cd6038f5641ea8052e",
+      "source": ".github/skills/suggest-awesome-github-copilot-skills/SKILL.md",
+      "source_sha256": "ed12cfeb9829a116b0f81147e641852d5c0127f8bbcdc633c3bfada4aba25f0f"
+    },
+    ".github/skills/test-gen/SKILL.md": {
+      "sha256": "6f0fb0de008cc54d7012139d8e593c71c744432617a780c522a633ea8c919f83",
+      "source": ".github/skills/test-gen/SKILL.md",
+      "source_sha256": "9c2b665d4007a6921d4651cd37e9811c1f91b6ea8eedf760e03bb2fcbfd4616d"
+    }
+  },
+  "generator": "_tools/scripts/sync-module-agent-config.py",
+  "tooling": {
+    ".github/scripts/check-agentic-config.py": {
+      "sha256": "087c8b9fa575e125376e6257e1845a84c53b36c9a4c844308e1d80338f68a105",
+      "source": "_tools/scripts/module_agentic_config_check.py",
+      "source_sha256": "d3e57bc46abd777fcf726ce72248e6f63c65635fdad8e3e8c900b6014375d9ad"
+    }
+  },
+  "version": 1
+}
