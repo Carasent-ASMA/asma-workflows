@@ -24,6 +24,10 @@ VERSION_PREFIX = "Version: "
 TITLE_COLOR = "#C9372C"
 SUMMARY_COLOR = "#216E4E"
 TECHNICAL_COLOR = "#C25100"
+COMPACT_HEADING_TEXT = "Earlier builds (compacted)"
+COMPACT_SEPARATOR = " \u00b7 "
+CONTENT_LIMIT_ERROR_CODE = "CONTENT_LIMIT_EXCEEDED"
+COMPACT_CHUNK_SIZE = 5
 
 
 def write_output(key: str, value: str) -> None:
@@ -855,6 +859,128 @@ def merge_entry_document(
     )
 
 
+def is_content_limit_error(exc: JiraApiError) -> bool:
+    """Return whether Jira rejected the field because the document is too large."""
+
+    return CONTENT_LIMIT_ERROR_CODE in str(exc)
+
+
+def is_compact_segment(segment: list[dict[str, object]]) -> bool:
+    """Return whether a segment is the managed list of compacted earlier builds."""
+
+    if not segment:
+        return False
+    heading = segment[0]
+    if heading.get("type") != "heading":
+        return False
+    return node_text(heading).strip() == COMPACT_HEADING_TEXT
+
+
+def heading_link(node: dict[str, object]) -> str | None:
+    """Return the first link href carried by a heading's text nodes."""
+
+    content = node.get("content")
+    if not isinstance(content, list):
+        return None
+    for child in content:
+        if not isinstance(child, dict):
+            continue
+        marks = child.get("marks")
+        if not isinstance(marks, list):
+            continue
+        for mark in marks:
+            if not isinstance(mark, dict) or mark.get("type") != "link":
+                continue
+            attrs = mark.get("attrs")
+            if isinstance(attrs, dict) and isinstance(attrs.get("href"), str):
+                return attrs["href"]
+    return None
+
+
+def compact_item_node(segment: list[dict[str, object]]) -> dict[str, object]:
+    """Collapse one full build block into a single bullet-list item."""
+
+    heading = segment[0]
+    title = node_text(heading).strip()
+    details: list[str] = []
+    for label in ("Release", "Status", "Recorded", "PR", "Commit", "Planned git tag"):
+        value = find_segment_value(segment, label)
+        if value:
+            details.append(value if label != "PR" else f"PR {value}")
+
+    content: list[dict[str, object]] = [
+        text_node(title, link=heading_link(heading), strong=True)
+    ]
+    if details:
+        content.append(text_node(COMPACT_SEPARATOR + COMPACT_SEPARATOR.join(details)))
+    return {"type": "listItem", "content": [paragraph_node(content)]}
+
+
+def compact_document(
+    document: dict[str, object],
+    *,
+    protect: SegmentIdentity,
+    limit: int,
+) -> tuple[dict[str, object], int]:
+    """Collapse up to ``limit`` of the oldest full build blocks into one-line items.
+
+    Jira caps the size of a textarea field; once a ticket has collected enough
+    full blocks every further update fails with CONTENT_LIMIT_EXCEEDED. The
+    oldest blocks are folded, oldest first, into a single "Earlier builds"
+    bullet list kept at the top of the field, so nothing is lost and the newest
+    builds stay fully rendered. The block identified by ``protect`` is never
+    compacted.
+    """
+
+    content_value = document.get("content")
+    if not isinstance(content_value, list):
+        content_value = []
+    existing_content = [node for node in content_value if isinstance(node, dict)]
+
+    compact_items: list[dict[str, object]] = []
+    full_segments: list[list[dict[str, object]]] = []
+    for segment in segment_document(existing_content):
+        if is_compact_segment(segment):
+            for node in segment[1:]:
+                if node.get("type") == "bulletList":
+                    items = node.get("content")
+                    if isinstance(items, list):
+                        compact_items.extend(
+                            item for item in items if isinstance(item, dict)
+                        )
+            continue
+        full_segments.append(segment)
+
+    compacted = 0
+    kept_segments: list[list[dict[str, object]]] = []
+    for segment in full_segments:
+        metadata = inspect_segment(segment)
+        if metadata is None or metadata.identity == protect or compacted >= limit:
+            kept_segments.append(segment)
+            continue
+        compact_items.append(compact_item_node(segment))
+        compacted += 1
+
+    if compacted == 0:
+        return document, 0
+
+    compact_segment: list[dict[str, object]] = [
+        heading_content_node(
+            SERVICE_HEADING_LEVEL,
+            [text_node(COMPACT_HEADING_TEXT, strong=True, color=TITLE_COLOR)],
+        ),
+        {"type": "bulletList", "content": compact_items},
+    ]
+    return (
+        {
+            "type": "doc",
+            "version": 1,
+            "content": join_segments([compact_segment, *kept_segments]),
+        },
+        compacted,
+    )
+
+
 def fetch_issue_document(config: JiraConfig, jira_key: str) -> dict[str, object]:
     """Fetch the current Jira custom field document for one issue."""
 
@@ -885,6 +1011,39 @@ def update_issue_document(
         method="PUT",
         payload={"fields": {config.field_id: document}},
     )
+
+
+def update_issue_document_within_limit(
+    config: JiraConfig,
+    jira_key: str,
+    document: dict[str, object],
+    *,
+    protect: SegmentIdentity,
+) -> tuple[dict[str, object], int]:
+    """Write the document, compacting the oldest blocks until Jira accepts it.
+
+    Returns the document that was finally stored and how many blocks were
+    compacted. Any error other than CONTENT_LIMIT_EXCEEDED, or a document that
+    cannot be compacted any further, is raised unchanged.
+    """
+
+    compacted_total = 0
+    while True:
+        try:
+            update_issue_document(config, jira_key, document)
+        except JiraApiError as exc:
+            if not is_content_limit_error(exc):
+                raise
+            document, compacted = compact_document(
+                document,
+                protect=protect,
+                limit=COMPACT_CHUNK_SIZE,
+            )
+            if compacted == 0:
+                raise
+            compacted_total += compacted
+            continue
+        return document, compacted_total
 
 
 def build_entry_from_args(args: argparse.Namespace) -> BuildHistoryEntry:
@@ -1029,7 +1188,12 @@ def publish_build_history(args: argparse.Namespace) -> int:
                 existing_document,
                 entry,
             )
-            update_issue_document(config, jira_key, document)
+            _, compacted = update_issue_document_within_limit(
+                config,
+                jira_key,
+                document,
+                protect=SegmentIdentity(entry.service_name, entry.version),
+            )
             updated_keys.append(jira_key)
             message = f"Updated Jira build history for {jira_key}."
             if replaced:
@@ -1040,6 +1204,13 @@ def publish_build_history(args: argparse.Namespace) -> int:
                     f"blocks into one latest block for {jira_key}."
                 )
             print(message)
+            if compacted > 0:
+                note = (
+                    f"Compacted {compacted} earlier build history blocks for "
+                    f"{jira_key} to stay within the Jira field size limit."
+                )
+                warnings.append(note)
+                print(note)
         except JiraApiError as exc:
             warning = f"Warning: {jira_key}: {exc}"
             warnings.append(warning)

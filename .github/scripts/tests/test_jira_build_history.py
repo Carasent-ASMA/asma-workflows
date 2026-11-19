@@ -505,6 +505,230 @@ class JiraBuildHistoryTests(unittest.TestCase):
         self.assertIn("failed_jira_keys=ASMA-2", written)
         self.assertIn("Failed Jira keys: ASMA-2", summary)
 
+    def _entry(self, service_name: str, version: str, run_id: str) -> object:
+        return jira_build_history.BuildHistoryEntry(
+            service_name=service_name,
+            version=version,
+            release_kind="app hotpatch build",
+            status="success",
+            recorded_at_utc="2026-11-06 14:38 UTC",
+            entry_id=f"github:Carasent-ASMA/{service_name}:{run_id}:1",
+            family="app",
+            repository=f"Carasent-ASMA/{service_name}",
+            workflow_name="Reusable App Hotpatch Release",
+            workflow_file=".github/workflows/reusable-app-hotpatch-release.yml",
+            run_url=f"https://github.com/Carasent-ASMA/{service_name}/actions/runs/{run_id}",
+            event_name="push",
+            ref_name="releases/v0.1.0",
+            commit_sha="abcdef1234567890",
+            commit_url=f"https://github.com/Carasent-ASMA/{service_name}/commit/abcdef1234567890",
+            job_results="assess_release=success, build_artifact=success",
+            git_tag=f"v{version}",
+            git_tag_url=f"https://github.com/Carasent-ASMA/{service_name}/releases/tag/v{version}",
+        )
+
+    def _document(self, *entries: object) -> dict[str, object]:
+        content: list[dict[str, object]] = []
+        for entry in entries:
+            content.extend(jira_build_history.build_block_nodes(entry))
+        return {"type": "doc", "version": 1, "content": content}
+
+    def _publish_args(self, version: str, run_id: str) -> list[str]:
+        return [
+            "publish",
+            "--service-name",
+            "asma-app-chat",
+            "--version",
+            version,
+            "--release-kind",
+            "app hotpatch build",
+            "--family",
+            "app",
+            "--workflow-name",
+            "Reusable App Hotpatch Release",
+            "--workflow-file",
+            ".github/workflows/reusable-app-hotpatch-release.yml",
+            "--repository",
+            "Carasent-ASMA/asma-app-chat",
+            "--server-url",
+            "https://github.com",
+            "--run-id",
+            run_id,
+            "--run-attempt",
+            "1",
+            "--event-name",
+            "push",
+            "--ref-name",
+            "releases/v0.1.0",
+            "--commit-sha",
+            "abcdef1234567890",
+            "--job-results",
+            "assess_release=success, build_artifact=success",
+            "--jira-source",
+            "ASMA-1 hotpatch",
+        ]
+
+    @staticmethod
+    def _content_limit_error() -> HTTPError:
+        return HTTPError(
+            url="https://example.atlassian.net/rest/api/3/issue/ASMA-1",
+            code=400,
+            msg="Bad Request",
+            hdrs=Message(),
+            fp=BytesIO(
+                b'{"errorMessages":[],"errors":{"customfield_11607":"CONTENT_LIMIT_EXCEEDED"}}'
+            ),
+        )
+
+    def test_compact_document_folds_oldest_blocks_into_one_list(self) -> None:
+        oldest = self._entry("asma-app-chat", "0.1.0-1", "1")
+        middle = self._entry("asma-app-chat", "0.1.0-2", "2")
+        newest = self._entry("asma-app-chat", "0.1.0-3", "3")
+        document = self._document(oldest, middle, newest)
+
+        compacted_document, compacted = jira_build_history.compact_document(
+            document,
+            protect=jira_build_history.SegmentIdentity("asma-app-chat", "0.1.0-3"),
+            limit=5,
+        )
+
+        self.assertEqual(compacted, 2)
+        content = compacted_document["content"]
+        self.assertEqual(
+            jira_build_history.node_text(content[0]),
+            jira_build_history.COMPACT_HEADING_TEXT,
+        )
+        self.assertEqual(content[1]["type"], "bulletList")
+        items = jira_build_history.list_item_texts(content[1])
+        self.assertEqual(len(items), 2)
+        self.assertTrue(items[0].startswith("asma-app-chat - 0.1.0-1"))
+        self.assertIn("app hotpatch build", items[0])
+        self.assertIn("2026-11-06 14:38 UTC", items[0])
+        self.assertIn("abcdef1", items[0])
+        self.assertIn("v0.1.0-1", items[0])
+        self.assertTrue(items[1].startswith("asma-app-chat - 0.1.0-2"))
+        # The protected (newest) block survives in full right after the list.
+        self.assertEqual(
+            jira_build_history.identify_segment(content[2:]),
+            jira_build_history.SegmentIdentity("asma-app-chat", "0.1.0-3"),
+        )
+        self.assertLess(
+            len(json.dumps(compacted_document)),
+            len(json.dumps(document)),
+        )
+
+    def test_compact_document_reuses_existing_compact_list_and_honours_limit(
+        self,
+    ) -> None:
+        entries = [
+            self._entry("asma-app-chat", f"0.1.0-{index}", str(index))
+            for index in range(1, 5)
+        ]
+        document = self._document(*entries)
+        protect = jira_build_history.SegmentIdentity("asma-app-chat", "0.1.0-4")
+
+        first_pass, first_count = jira_build_history.compact_document(
+            document, protect=protect, limit=1
+        )
+        second_pass, second_count = jira_build_history.compact_document(
+            first_pass, protect=protect, limit=5
+        )
+
+        self.assertEqual((first_count, second_count), (1, 2))
+        headings = [
+            jira_build_history.node_text(node)
+            for node in second_pass["content"]
+            if node.get("type") == "heading"
+        ]
+        self.assertEqual(
+            headings,
+            [jira_build_history.COMPACT_HEADING_TEXT, "asma-app-chat - 0.1.0-4"],
+        )
+        items = jira_build_history.list_item_texts(second_pass["content"][1])
+        self.assertEqual(len(items), 3)
+
+        nothing_left, count = jira_build_history.compact_document(
+            second_pass, protect=protect, limit=5
+        )
+        self.assertEqual(count, 0)
+        self.assertIs(nothing_left, second_pass)
+
+    @mock.patch.object(jira_build_history.request, "urlopen")
+    def test_publish_compacts_when_jira_reports_content_limit(
+        self,
+        mock_urlopen: mock.Mock,
+    ) -> None:
+        existing = self._document(
+            self._entry("asma-app-chat", "0.1.0-1", "1"),
+            self._entry("asma-app-chat", "0.1.0-2", "2"),
+        )
+        mock_urlopen.side_effect = [
+            FakeHttpResponse({"fields": {"customfield_11607": existing}}),
+            self._content_limit_error(),
+            FakeHttpResponse(None),
+        ]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "output.txt"
+            summary_path = Path(temp_dir) / "summary.md"
+            env = {
+                "GITHUB_OUTPUT": str(output_path),
+                "GITHUB_STEP_SUMMARY": str(summary_path),
+                "JIRA_BASE_URL": "https://example.atlassian.net",
+                "JIRA_EMAIL": "jira@example.com",
+                "JIRA_API_TOKEN": "secret",
+            }
+            with mock.patch.dict(os.environ, env, clear=False):
+                exit_code = jira_build_history.main(self._publish_args("0.1.0-3", "3"))
+                written = output_path.read_text(encoding="utf-8")
+                summary = summary_path.read_text(encoding="utf-8")
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("update_status=updated", written)
+        self.assertIn("updated_jira_keys=ASMA-1", written)
+        self.assertIn("failed_jira_keys=\n", written)
+        self.assertIn("Compacted 2 earlier build history blocks for ASMA-1", summary)
+
+        self.assertEqual(mock_urlopen.call_count, 3)
+        retry_request = mock_urlopen.call_args_list[2].args[0]
+        payload = json.loads(retry_request.data.decode("utf-8"))
+        content = payload["fields"]["customfield_11607"]["content"]
+        self.assertEqual(
+            jira_build_history.node_text(content[0]),
+            jira_build_history.COMPACT_HEADING_TEXT,
+        )
+        self.assertEqual(len(jira_build_history.list_item_texts(content[1])), 2)
+        self.assertEqual(
+            jira_build_history.identify_segment(content[2:]),
+            jira_build_history.SegmentIdentity("asma-app-chat", "0.1.0-3"),
+        )
+
+    @mock.patch.object(jira_build_history.request, "urlopen")
+    def test_publish_reports_failure_when_nothing_is_left_to_compact(
+        self,
+        mock_urlopen: mock.Mock,
+    ) -> None:
+        mock_urlopen.side_effect = [
+            FakeHttpResponse({"fields": {"customfield_11607": None}}),
+            self._content_limit_error(),
+        ]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "output.txt"
+            env = {
+                "GITHUB_OUTPUT": str(output_path),
+                "JIRA_BASE_URL": "https://example.atlassian.net",
+                "JIRA_EMAIL": "jira@example.com",
+                "JIRA_API_TOKEN": "secret",
+            }
+            with mock.patch.dict(os.environ, env, clear=False):
+                exit_code = jira_build_history.main(self._publish_args("0.1.0-1", "1"))
+                written = output_path.read_text(encoding="utf-8")
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("update_status=failed_all", written)
+        self.assertIn("failed_jira_keys=ASMA-1", written)
+        self.assertEqual(mock_urlopen.call_count, 2)
 
 if __name__ == "__main__":
     unittest.main()
