@@ -31,7 +31,7 @@ on:
 jobs:
     release_plan:
         name: Resolve Release Plan
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04-arm
         permissions:
             contents: read
         outputs:
@@ -87,7 +87,7 @@ jobs:
         name: Build Package
         needs: release_plan
         if: ${{ needs.release_plan.outputs.should_continue == 'true' }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04-arm
         permissions:
             contents: read
         steps:
@@ -137,7 +137,7 @@ jobs:
             always() &&
             needs.release_plan.outputs.should_continue == 'true' &&
             needs.build.result == 'success'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04-arm
         permissions:
             contents: write
             id-token: write
@@ -229,7 +229,7 @@ jobs:
             - build
             - publish_release
         if: always()
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04-arm
         permissions:
             contents: read
         steps:
